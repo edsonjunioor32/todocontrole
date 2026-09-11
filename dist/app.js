@@ -3,6 +3,7 @@
 
   var STORAGE_KEY = 'todo-controle-local-v3';
   var LEGACY_KEY = 'todo-controle-local-v1';
+  var THEME_KEY = 'todo-controle-theme';
   var activeView = 'dashboard';
   var activeFilter = 'all';
   var searchTerm = '';
@@ -10,6 +11,7 @@
   var quickMenu = false;
   var importRows = [];
   var toastTimer = null;
+  var theme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   var monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   var colors = ['#9a5cf2', '#35c7b4', '#52a7ff', '#f3a85b', '#ed6d88', '#8d9baa'];
 
@@ -119,6 +121,30 @@
 
   var state = loadState();
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f1eb' : '#101217');
+  }
+  function ensureThemeControl() {
+    var button = document.getElementById('theme-control');
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'theme-control';
+      button.className = 'theme-toggle-floating';
+      button.setAttribute('data-action', 'toggle-theme');
+      document.body.appendChild(button);
+    }
+    button.setAttribute('aria-label', theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro');
+    button.innerHTML = '<span class="theme-toggle-icon">' + (theme === 'dark' ? '☼' : '◐') + '</span><span>' + (theme === 'dark' ? 'Claro' : 'Escuro') + '</span>';
+  }
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, theme);
+    applyTheme();
+    ensureThemeControl();
+    showToast(theme === 'light' ? 'Tema claro ativado.' : 'Tema escuro ativado.');
+  }
   function categoryById(id) { return state.categories.find(function (item) { return item.id === id; }); }
   function accountById(id) { return state.accounts.find(function (item) { return item.id === id; }); }
   function cardById(id) { return state.cards.find(function (item) { return item.id === id; }); }
@@ -339,6 +365,7 @@
     if (filter) { activeFilter = filter; render(); return; }
     var action = target.getAttribute('data-action');
     if (!action) return;
+    if (action === 'toggle-theme') { toggleTheme(); return; }
     if (action === 'toggle-sidebar') { var sidebar = document.getElementById('sidebar'); if (sidebar) sidebar.classList.toggle('open'); return; }
     if (action === 'quick-add') { quickMenu = true; render(); return; }
     if (action === 'close-quick') { quickMenu = false; render(); return; }
@@ -424,5 +451,7 @@
   document.addEventListener('change', handleChange);
   document.addEventListener('input', handleInput);
   window.addEventListener('hashchange', function () { var hash = window.location.hash.replace('#', ''); if (navItems().some(function (item) { return item[0] === hash; })) { activeView = hash; render(); } });
+  applyTheme();
   render();
+  ensureThemeControl();
 })();

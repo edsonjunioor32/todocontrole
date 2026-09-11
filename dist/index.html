@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101827" />
+    <meta
+      name="description"
+      content="Todo Controle: uma forma mais clara, local e consciente de organizar o seu dinheiro."
+    />
+    <link rel="canonical" href="https://edsonjunioor32.github.io/todocontrole/" />
+    <title>Todo Controle — Seu dinheiro merece um plano</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #101827;
+        --ink-soft: #536071;
+        --paper: #f5f1e8;
+        --paper-deep: #ebe4d7;
+        --card: #fffdf8;
+        --line: rgba(16, 24, 39, 0.13);
+        --lime: #c7f36b;
+        --coral: #ff7357;
+        --blue: #4b73ff;
+        --shadow: 0 24px 70px rgba(16, 24, 39, 0.13);
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+        overflow-x: hidden;
+      }
+
+      a { color: inherit; }
+
+      .shell {
+        width: min(1160px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid transparent;
+        background: rgba(245, 241, 232, 0.88);
+        backdrop-filter: blur(18px);
+      }
+
+      .nav {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        background: var(--ink);
+        color: var(--lime);
+        font-size: 18px;
+        transform: rotate(-8deg);
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+        font-weight: 650;
+      }
+
+      .nav-links a { text-decoration: none; }
+      .nav-links a:hover { color: var(--ink); }
+
+      .menu-button {
+        display: none;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        color: var(--ink);
+        padding: 9px 12px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 48px;
+        border: 1px solid transparent;
+        border-radius: 13px;
+        padding: 0 18px;
+        font-weight: 750;
+        text-decoration: none;
+        transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+      }
+
+      .button:hover { transform: translateY(-2px); box-shadow: 0 11px 25px rgba(16, 24, 39, 0.13); }
+      .button:focus-visible, .menu-button:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+      .button-dark { background: var(--ink); color: #fffdf8; }
+      .button-light { border-color: var(--line); background: var(--card); }
+      .button-lime { background: var(--lime); color: var(--ink); }
+
+      .hero {
+        position: relative;
+        padding: 88px 0 96px;
+      }
+
+      .hero::before {
+        content: "";
+        width: 480px;
+        height: 480px;
+        position: absolute;
+        top: 10px;
+        right: -190px;
+        border-radius: 50%;
+        background: rgba(199, 243, 107, 0.29);
+        filter: blur(2px);
+        pointer-events: none;
+      }
+
+      .hero-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1.02fr) minmax(390px, 0.98fr);
+        align-items: center;
+        gap: 72px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: var(--ink-soft);
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 26px;
+        height: 3px;
+        border-radius: 99px;
+        background: var(--coral);
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+
+      h1 {
+        max-width: 650px;
+        margin-bottom: 24px;
+        font-size: clamp(3.35rem, 7vw, 6.7rem);
+        line-height: 0.94;
+        letter-spacing: -0.085em;
+      }
+
+      .hero-copy {
+        max-width: 540px;
+        margin-bottom: 30px;
+        color: var(--ink-soft);
+        font-size: 1.13rem;
+      }
+
+      .button-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
+      .hero-note {
+        margin-top: 18px;
+        color: var(--ink-soft);
+        font-size: 0.82rem;
+      }
+
+      .dashboard {
+        position: relative;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 25px;
+        background: #192438;
+        box-shadow: var(--shadow);
+        transform: rotate(2deg);
+      }
+
+      .dashboard::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: 18px -20px -18px 20px;
+        border-radius: 25px;
+        background: var(--coral);
+        transform: rotate(-5deg);
+      }
+
+      .dashboard-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 7px 16px;
+        color: #dce6f5;
+        font-size: 0.76rem;
+      }
+
+      .window-dots { display: flex; gap: 5px; }
+      .window-dots i { width: 7px; height: 7px; display: block; border-radius: 50%; background: #ff7357; }
+      .window-dots i:nth-child(2) { background: #c7f36b; }
+      .window-dots i:nth-child(3) { background: #7d95ff; }
+
+      .dashboard-main {
+        padding: 24px;
+        border-radius: 17px;
+        background: #f9f7f1;
+      }
+
+      .mini-label { color: var(--ink-soft); font-size: 0.74rem; font-weight: 700; }
+      .balance { margin: 4px 0 22px; font-size: 2.25rem; font-weight: 850; letter-spacing: -0.06em; }
+
+      .balance span { color: #2d995d; font-size: 0.8rem; letter-spacing: 0; }
+
+      .budget-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px 14px;
+        margin-top: 15px;
+        font-size: 0.83rem;
+      }
+
+      .budget-row strong { font-size: 0.8rem; }
+      .meter { grid-column: 1 / -1; height: 9px; overflow: hidden; border-radius: 99px; background: #e9e5db; }
+      .meter i { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+      .budget-row:nth-of-type(2) .meter i { background: var(--coral); }
+      .budget-row:nth-of-type(3) .meter i { background: #c7a42d; }
+
+      .section { padding: 106px 0; }
+      .section-dark { background: var(--ink); color: #f8f7f1; }
+      .section-soft { background: var(--paper-deep); }
+
+      .section-heading {
+        display: grid;
+        grid-template-columns: 0.75fr 1fr;
+        gap: 50px;
+        align-items: end;
+        margin-bottom: 45px;
+      }
+
+      .section-heading h2 { margin-bottom: 0; font-size: clamp(2.5rem, 5vw, 4.8rem); line-height: 0.98; letter-spacing: -0.075em; }
+      .section-heading p { max-width: 500px; margin-bottom: 0; color: var(--ink-soft); font-size: 1.05rem; }
+      .section-dark .section-heading p { color: #a7b3c6; }
+
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+      .card {
+        min-height: 260px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 19px;
+        background: var(--card);
+      }
+
+      .section-dark .card { border-color: rgba(255,255,255,0.12); background: #182238; }
+      .card-icon { width: 43px; height: 43px; display: grid; place-items: center; margin-bottom: 48px; border-radius: 13px; background: var(--lime); color: var(--ink); font-size: 1.2rem; }
+      .card:nth-child(2) .card-icon { background: #9db1ff; }
+      .card:nth-child(3) .card-icon { background: #ffb19e; }
+      .card:nth-child(4) .card-icon { background: #f6d777; }
+      .card h3 { margin-bottom: 9px; font-size: 1.15rem; letter-spacing: -0.03em; }
+      .card p { margin-bottom: 0; color: var(--ink-soft); font-size: 0.91rem; }
+      .section-dark .card p { color: #a7b3c6; }
+
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .step { padding-top: 20px; border-top: 2px solid var(--ink); }
+      .step-number { display: block; margin-bottom: 48px; color: var(--coral); font-size: 0.83rem; font-weight: 850; letter-spacing: 0.08em; }
+      .step h3 { margin-bottom: 8px; font-size: 1.35rem; letter-spacing: -0.04em; }
+      .step p { margin-bottom: 0; max-width: 280px; color: var(--ink-soft); }
+
+      .reference-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; align-items: stretch; }
+      .reference-card { padding: 36px; border-radius: 22px; background: var(--lime); }
+      .reference-card h2 { max-width: 600px; margin-bottom: 18px; font-size: clamp(2.4rem, 5vw, 4.4rem); line-height: 0.98; letter-spacing: -0.075em; }
+      .reference-card p { max-width: 600px; margin-bottom: 25px; }
+      .reference-side { display: flex; flex-direction: column; justify-content: space-between; padding: 28px; border-radius: 22px; background: #fffdf8; }
+      .reference-side strong { display: block; max-width: 260px; font-size: 1.5rem; line-height: 1.08; letter-spacing: -0.055em; }
+      .reference-side p { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+
+      .cta { padding: 106px 0 116px; background: var(--coral); }
+      .cta-inner { display: flex; align-items: end; justify-content: space-between; gap: 35px; }
+      .cta h2 { max-width: 660px; margin-bottom: 0; font-size: clamp(3rem, 6vw, 6.2rem); line-height: 0.93; letter-spacing: -0.085em; }
+      .cta p { max-width: 280px; margin-bottom: 5px; color: #542117; }
+
+      footer { padding: 30px 0; background: var(--ink); color: #dce6f5; }
+      .footer-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 0.82rem; }
+      .footer-row a { color: var(--lime); }
+      .footer-note { color: #93a2b8; }
+
+      @media (max-width: 920px) {
+        .hero-grid, .reference-grid { grid-template-columns: 1fr; }
+        .hero-grid { gap: 55px; }
+        .dashboard { max-width: 600px; width: 100%; margin: 0 auto; }
+        .cards { grid-template-columns: repeat(2, 1fr); }
+        .section-heading { grid-template-columns: 1fr; gap: 18px; }
+      }
+
+      @media (max-width: 660px) {
+        .shell { width: min(100% - 28px, 1160px); }
+        .nav { min-height: 68px; }
+        .menu-button { display: block; }
+        .nav-links { display: none; position: absolute; top: 67px; right: 14px; left: 14px; flex-direction: column; align-items: stretch; gap: 0; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+        .nav-links.is-open { display: flex; }
+        .nav-links a { padding: 12px; }
+        .nav-links .button { margin: 4px; }
+        .hero { padding: 62px 0 76px; }
+        h1 { font-size: clamp(3.25rem, 17vw, 5.1rem); }
+        .hero-copy { font-size: 1rem; }
+        .section { padding: 74px 0; }
+        .cards, .steps { grid-template-columns: 1fr; }
+        .card { min-height: auto; }
+        .card-icon, .step-number { margin-bottom: 28px; }
+        .reference-card, .reference-side { padding: 26px; }
+        .cta { padding: 78px 0; }
+        .cta-inner, .footer-row { align-items: flex-start; flex-direction: column; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell nav">
+        <a class="brand" href="#top" aria-label="Todo Controle, início">
+          <span class="brand-mark" aria-hidden="true">↗</span>
+          <span>todo controle</span>
+        </a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-menu">Menu</button>
+        <nav id="site-menu" class="nav-links" aria-label="Navegação principal">
+          <a href="#proposta">Proposta</a>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#referencia">Referência</a>
+          <a class="button button-dark" href="https://github.com/edsonjunioor32/todocontrole" target="_blank" rel="noreferrer">Ver no GitHub <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="shell hero-grid">
+          <div>
+            <div class="eyebrow">Projeto independente · em construção</div>
+            <h1>Seu dinheiro merece um plano.</h1>
+            <p class="hero-copy">Uma experiência mais clara para acompanhar escolhas, prioridades e o caminho de cada real — com privacidade desde o começo.</p>
+            <div class="button-row">
+              <a class="button button-dark" href="#proposta">Conheça a proposta <span aria-hidden="true">↓</span></a>
+              <a class="button button-light" href="https://github.com/edsonjunioor32/todocontrole" target="_blank" rel="noreferrer">Acompanhar no GitHub</a>
+            </div>
+            <p class="hero-note">Inspirado em ideias open source de organização financeira, como o orçamento por envelopes.</p>
+          </div>
+
+          <div class="dashboard" aria-label="Exemplo visual de um painel de orçamento">
+            <div class="dashboard-top">
+              <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span>visão do mês · abril</span>
+            </div>
+            <div class="dashboard-main">
+              <span class="mini-label">Disponível para planejar</span>
+              <div class="balance">R$ 5.240 <span>+8,4%</span></div>
+              <div class="budget-row"><span>Casa</span><strong>R$ 2.180</strong><div class="meter"><i style="width: 72%"></i></div></div>
+              <div class="budget-row"><span>Alimentação</span><strong>R$ 840</strong><div class="meter"><i style="width: 48%"></i></div></div>
+              <div class="budget-row"><span>Planos</span><strong>R$ 620</strong><div class="meter"><i style="width: 31%"></i></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="proposta" class="section section-dark">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Mais intenção. Menos susto no fim do mês.</h2>
+            <p>O Todo Controle nasce para transformar o controle financeiro em uma rotina possível: você decide o que importa, distribui seus recursos e acompanha o que mudou.</p>
+          </div>
+          <div class="cards">
+            <article class="card"><div class="card-icon" aria-hidden="true">◎</div><h3>Planeje por envelopes</h3><p>Separe o dinheiro por prioridades antes que ele desapareça nas pequenas decisões do dia.</p></article>
+            <article class="card"><div class="card-icon" aria-hidden="true">↗</div><h3>Veja o todo</h3><p>Uma visão simples para entender o que está comprometido, disponível e a caminho.</p></article>
+            <article class="card"><div class="card-icon" aria-hidden="true">⌂</div><h3>Tenha mais controle</h3><p>Organização com linguagem humana, sem transformar sua vida financeira em uma planilha impossível.</p></article>
+            <article class="card"><div class="card-icon" aria-hidden="true">✦</div><h3>Comece com privacidade</h3><p>Uma proposta local-first: seus dados e suas decisões devem continuar próximos de você.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="como-funciona" class="section section-soft">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Um jeito mais calmo de decidir.</h2>
+            <p>O método é direto. Primeiro você dá um destino ao dinheiro; depois observa o que aconteceu e ajusta o próximo passo.</p>
+          </div>
+          <div class="steps">
+            <article class="step"><span class="step-number">01 · DEFINA</span><h3>O que importa agora</h3><p>Escolha as categorias e prioridades que fazem sentido para a sua realidade.</p></article>
+            <article class="step"><span class="step-number">02 · DISTRIBUA</span><h3>Dê um trabalho a cada real</h3><p>Direcione os recursos para objetivos concretos, antes de gastar por impulso.</p></article>
+            <article class="step"><span class="step-number">03 · REVISE</span><h3>Aprenda com o mês</h3><p>Acompanhe seus movimentos e ajuste o plano sem culpa ou complicação.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="referencia" class="section">
+        <div class="shell reference-grid">
+          <div class="reference-card">
+            <div class="eyebrow">De onde veio a inspiração</div>
+            <h2>Open source também pode ser acolhedor.</h2>
+            <p>O Todo Controle pesquisa soluções que colocam clareza, autonomia e privacidade no centro. O Actual Budget é uma das referências desse caminho, com orçamento por envelopes e uma abordagem local-first.</p>
+            <a class="button button-dark" href="https://github.com/actualbudget/actual" target="_blank" rel="noreferrer">Conhecer o projeto de referência <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="reference-side">
+            <strong>Uma página independente, um projeto em evolução.</strong>
+            <p>Esta página não é oficial, não é afiliada e não representa o Actual Budget. Para informações atualizadas sobre instalação, recursos e suporte, consulte a <a href="https://actualbudget.org/docs/" target="_blank" rel="noreferrer">documentação oficial</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="shell cta-inner">
+          <h2>Controle é saber para onde você quer ir.</h2>
+          <div>
+            <p>O projeto está começando. Acompanhe a construção e ajude a dar forma ao próximo passo.</p>
+            <a class="button button-dark" href="https://github.com/edsonjunioor32/todocontrole" target="_blank" rel="noreferrer">Acessar o repositório <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell footer-row">
+        <span>© <span id="year">2026</span> Todo Controle</span>
+        <span class="footer-note">Projeto independente inspirado em referências open source. <a href="https://github.com/edsonjunioor32/todocontrole" target="_blank" rel="noreferrer">Código no GitHub</a>.</span>
+      </div>
+    </footer>
+
+    <script>
+      const menuButton = document.querySelector('.menu-button');
+      const menu = document.querySelector('#site-menu');
+      const year = document.querySelector('#year');
+
+      if (year) year.textContent = String(new Date().getFullYear());
+
+      menuButton?.addEventListener('click', () => {
+        const isOpen = menu.classList.toggle('is-open');
+        menuButton.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      menu?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+          menu.classList.remove('is-open');
+          menuButton?.setAttribute('aria-expanded', 'false');
+        });
+      });
+    </script>
+  </body>
+</html>

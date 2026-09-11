@@ -120,6 +120,14 @@
   }
 
   var state = loadState();
+  state.telegram = state.telegram || { status: 'not-configured', botUsername: '', chatId: '' };
+  var activeCardFilter = 'all';
+  var activeCategoryFilter = 'all';
+  var activeAccountFilter = 'all';
+  var reportStartDate = '';
+  var reportEndDate = '';
+  var reportCardFilter = 'all';
+  var reportCategoryFilter = 'all';
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', theme);
@@ -176,8 +184,10 @@
     return total;
   }
   function cardBill(cardId, month) {
-    return monthTransactions(month).reduce(function (total, item) {
+    return state.transactions.reduce(function (total, item) {
       if (item.cardId !== cardId) return total;
+      var itemMonth = item.type === 'expense' ? (item.billingMonth || String(item.date || '').slice(0, 7)) : String(item.date || '').slice(0, 7);
+      if (itemMonth !== month) return total;
       if (item.type === 'expense') return total + Number(item.amount || 0);
       if (item.type === 'card-payment') return total - Number(item.amount || 0);
       return total;
@@ -194,7 +204,7 @@
     return { income: income, expense: expense, planned: planned, balance: balance, monthly: income - expense, pending: pending, openBills: openBills, transactions: transactions };
   }
 
-  function navItems() { return [['dashboard', '⌂', 'Principal'], ['transactions', '☷', 'Transações'], ['planning', '◫', 'Planejamento'], ['accounts', '▣', 'Contas e cartões'], ['reports', '◌', 'Relatórios'], ['openfinance', '⌁', 'Open Finance'], ['more', '⋯', 'Mais']]; }
+  function navItems() { return [['dashboard', '⌂', 'Principal'], ['transactions', '☷', 'Transações'], ['planning', '◫', 'Planejamento'], ['accounts', '▣', 'Contas e cartões'], ['reports', '◌', 'Relatórios'], ['telegram', '✦', 'Telegram'], ['openfinance', '⌁', 'Open Finance'], ['more', '⋯', 'Mais']]; }
   function renderSidebar() {
     return '<aside class="sidebar" id="sidebar"><a class="brand" href="#dashboard" data-view="dashboard"><span class="brand-mark">+</span><span>Todo Controle<small>suas regras, seu ritmo</small></span></a><p class="side-label">Workspace</p><nav class="side-nav">' + navItems().map(function (item) { return '<button class="nav-item' + (activeView === item[0] ? ' active' : '') + '" data-view="' + item[0] + '"><span class="nav-icon">' + item[1] + '</span>' + item[2] + '</button>'; }).join('') + '</nav><div class="sidebar-footer"><span class="privacy-dot"></span>Modo local ativo<br><span>Seus dados ficam neste navegador.</span></div></aside>';
   }
@@ -356,7 +366,300 @@
   }
   function readImportFile(file) { var reader = new FileReader(); reader.onload = function () { var text = String(reader.result || ''); importRows = /\.ofx$|\.qfx$/i.test(file.name) || text.indexOf('<OFX>') >= 0 ? parseOFX(text) : parseCSV(text); render(); if (!importRows.length) showToast('Não consegui identificar lançamentos nesse arquivo.'); }; reader.readAsText(file); }
 
+  function filterOptions(items, value, emptyLabel) {
+    return '<option value="all">' + esc(emptyLabel) + '</option>' + items.map(function (item) { return '<option value="' + esc(item.id) + '"' + selected(item.id === value) + '>' + esc(item.name) + '</option>'; }).join('');
+  }
+  function billingMonthOptions(value) {
+    var target = value || state.selectedMonth;
+    var months = [];
+    for (var index = -3; index <= 6; index += 1) months.push(addMonths(target + '-01', index).slice(0, 7));
+    if (months.indexOf(target) < 0) months.push(target);
+    return months.map(function (month) { return '<option value="' + month + '"' + selected(month === target) + '>' + monthLabel(month) + '</option>'; }).join('');
+  }
+  function dateAfter(iso) { return addMonths(iso.slice(0, 7) + '-01', 0).slice(0, 7) === iso.slice(0, 7) ? (function () { var date = new Date(iso + 'T12:00:00'); date.setDate(date.getDate() + 1); return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); })() : iso; }
+  function summaryFromTransactions(transactions) {
+    return {
+      income: transactions.filter(function (item) { return item.type === 'income'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0),
+      expense: transactions.filter(function (item) { return item.type === 'expense'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0),
+      pending: transactions.filter(function (item) { return item.status === 'pending'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0)
+    };
+  }
+  function reportTransactions() {
+    var start = reportStartDate || state.selectedMonth + '-01';
+    var end = reportEndDate ? dateAfter(reportEndDate) : addMonths(state.selectedMonth + '-01', 1);
+    return state.transactions.filter(function (item) {
+      var date = String(item.date || '');
+      var cardMatch = reportCardFilter === 'all' || item.cardId === reportCardFilter;
+      var categoryMatch = reportCategoryFilter === 'all' || item.categoryId === reportCategoryFilter || categoryById(item.categoryId) && categoryById(item.categoryId).parentId === reportCategoryFilter;
+      return date >= start && date < end && cardMatch && categoryMatch;
+    });
+  }
+  function categorySummaryFromTransactions(transactions) {
+    return state.categories.filter(function (category) { return !category.parentId; }).map(function (category) {
+      return { category: category, amount: transactions.filter(function (item) { var child = categoryById(item.categoryId); return item.type === 'expense' && (item.categoryId === category.id || child && child.parentId === category.id); }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0) };
+    }).filter(function (row) { return row.amount > 0; }).sort(function (a, b) { return b.amount - a.amount; });
+  }
+  function parseDelimitedLine(line, delimiter) {
+    var values = [], value = '', quoted = false;
+    for (var index = 0; index < line.length; index += 1) {
+      var character = line[index];
+      if (character === '"' && line[index + 1] === '"') { value += '"'; index += 1; }
+      else if (character === '"') quoted = !quoted;
+      else if (character === delimiter && !quoted) { values.push(value.trim()); value = ''; }
+      else value += character;
+    }
+    values.push(value.trim());
+    return values;
+  }
+  function csvDate(value) {
+    var raw = String(value || '').trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw.split('/').reverse().join('-');
+    if (/^\d{4}\/\d{2}\/\d{2}$/.test(raw)) return raw.replace(/\//g, '-');
+    return raw;
+  }
+  function csvMonth(value) {
+    var raw = String(value || '').trim();
+    if (/^\d{2}\/\d{4}$/.test(raw)) return raw.split('/').reverse().join('-');
+    if (/^\d{4}\/\d{2}$/.test(raw)) return raw.replace('/', '-');
+    return /^\d{4}-\d{2}/.test(raw) ? raw.slice(0, 7) : '';
+  }
+
+  function renderTransactions() {
+    var transactions = monthTransactions(state.selectedMonth).filter(function (item) {
+      var owner = item.cardId ? cardById(item.cardId) : accountById(item.accountId);
+      var text = (item.description + ' ' + displayCategory(item) + ' ' + (owner ? owner.name : '')).toLowerCase();
+      var typeMatch = activeFilter === 'all' || activeFilter === item.type || activeFilter === 'pending' && item.status === 'pending';
+      var cardMatch = activeCardFilter === 'all' || item.cardId === activeCardFilter;
+      var categoryMatch = activeCategoryFilter === 'all' || item.categoryId === activeCategoryFilter || categoryById(item.categoryId) && categoryById(item.categoryId).parentId === activeCategoryFilter;
+      var accountMatch = activeAccountFilter === 'all' || item.accountId === activeAccountFilter;
+      return typeMatch && cardMatch && categoryMatch && accountMatch && text.indexOf(searchTerm.toLowerCase()) >= 0;
+    }).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    var totals = summaryFromTransactions(transactions);
+    return renderTopbar('Transações', 'Registre e revise tudo o que acontece com seu dinheiro') + '<div class="content"><section class="card section"><div class="section-heading"><div><h2>Seus lançamentos</h2><p>' + transactions.length + ' resultados em ' + esc(monthLabel(state.selectedMonth)) + '</p></div><button class="button primary" data-action="quick-add">＋ Novo lançamento</button></div><div class="filter-grid"><div class="field filter-field"><label for="transaction-search">Buscar</label><input class="search" id="transaction-search" value="' + esc(searchTerm) + '" placeholder="Descrição ou categoria" aria-label="Buscar lançamentos" /></div><div class="field filter-field"><label for="transaction-card-filter">Cartão</label><select id="transaction-card-filter">' + filterOptions(state.cards, activeCardFilter, 'Todos os cartões') + '</select></div><div class="field filter-field"><label for="transaction-category-filter">Categoria</label><select id="transaction-category-filter">' + filterOptions(state.categories, activeCategoryFilter, 'Todas as categorias') + '</select></div><div class="field filter-field"><label for="transaction-account-filter">Conta</label><select id="transaction-account-filter">' + filterOptions(state.accounts, activeAccountFilter, 'Todas as contas') + '</select></div></div><div class="filter-bar"><button class="filter-chip' + (activeFilter === 'all' ? ' active' : '') + '" data-filter="all">Todos</button><button class="filter-chip' + (activeFilter === 'expense' ? ' active' : '') + '" data-filter="expense">Despesas</button><button class="filter-chip' + (activeFilter === 'income' ? ' active' : '') + '" data-filter="income">Receitas</button><button class="filter-chip' + (activeFilter === 'pending' ? ' active' : '') + '" data-filter="pending">Pendentes</button></div><div class="selection-summary"><div class="selection-total"><span>Receitas selecionadas</span><strong class="positive">' + money(totals.income) + '</strong></div><div class="selection-total"><span>Despesas selecionadas</span><strong class="negative">' + money(totals.expense) + '</strong></div></div><div class="transaction-list">' + (transactions.length ? transactions.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento encontrado.</div>') + '</div></section></div>';
+  }
+
+  function renderReports() {
+    var transactions = reportTransactions();
+    var data = summaryFromTransactions(transactions);
+    var categories = categorySummaryFromTransactions(transactions);
+    var max = categories.length ? categories[0].amount : 1;
+    var previousMonth = addMonths(state.selectedMonth + '-01', -1).slice(0, 7);
+    var previous = summary(previousMonth);
+    var dateSummary = reportStartDate || reportEndDate ? dateBR(reportStartDate || state.selectedMonth + '-01') + ' até ' + dateBR(reportEndDate || todayISO()) : monthLabel(state.selectedMonth);
+    return renderTopbar('Relatórios', 'Entenda seus hábitos e tome decisões melhores') + '<div class="content"><section class="card section"><div class="section-heading"><div><h2>Filtros do relatório</h2><p>Combine período, cartão e categoria para uma leitura precisa.</p></div><button class="button small ghost" data-action="reset-report-filters">Limpar filtros</button></div><div class="filter-grid report-filter-grid"><div class="field filter-field"><label for="report-start">Data inicial</label><input id="report-start" type="date" value="' + esc(reportStartDate) + '" /></div><div class="field filter-field"><label for="report-end">Data final</label><input id="report-end" type="date" value="' + esc(reportEndDate) + '" /></div><div class="field filter-field"><label for="report-card-filter">Cartão</label><select id="report-card-filter">' + filterOptions(state.cards, reportCardFilter, 'Todos os cartões') + '</select></div><div class="field filter-field"><label for="report-category-filter">Categoria</label><select id="report-category-filter">' + filterOptions(state.categories, reportCategoryFilter, 'Todas as categorias') + '</select></div></div></section><div class="grid summary-grid"><div class="card summary-card"><span class="label">Receitas no período</span><div class="value positive">' + money(data.income) + '</div><div class="helper">' + transactions.length + ' movimentos selecionados</div></div><div class="card summary-card"><span class="label">Despesas no período</span><div class="value negative">' + money(data.expense) + '</div><div class="helper">saldo do recorte: ' + money(data.income - data.expense) + '</div></div><div class="card summary-card"><span class="label">Maior categoria</span><div class="value accent">' + esc(categories[0] ? categories[0].category.name : '—') + '</div><div class="helper">' + (categories[0] ? money(categories[0].amount) : 'sem dados') + '</div></div><div class="card summary-card"><span class="label">Período analisado</span><div class="value accent report-period-value">' + esc(dateSummary) + '</div><div class="helper">filtros aplicados ao relatório</div></div></div><div class="grid two-column"><section class="card section"><div class="section-heading"><div><h2>Despesas por categoria</h2><p>Ranking do recorte selecionado</p></div><button class="button small secondary" data-action="export-filtered-csv">Exportar CSV</button></div><div class="report-bars">' + (categories.length ? categories.map(function (row) { return '<div class="report-bar-row"><label>' + esc(row.category.name) + '</label><div class="report-bar"><span style="width:' + clamp(row.amount / max * 100, 0, 100) + '%"></span></div><strong>' + money(row.amount) + '</strong></div>'; }).join('') : '<div class="empty">Registre despesas ou ajuste os filtros para gerar o relatório.</div>') + '</div></section><section class="card section"><div class="section-heading"><div><h2>Fluxo selecionado</h2><p>Entradas e saídas consolidadas</p></div></div><div class="budget-list"><div class="budget-row"><div class="budget-row-top"><strong>Receitas</strong><span class="positive">' + money(data.income) + '</span></div><div class="progress teal"><span style="width:100%"></span></div></div><div class="budget-row"><div class="budget-row-top"><strong>Despesas</strong><span class="negative">' + money(data.expense) + '</span></div><div class="progress red"><span style="width:' + (data.income ? clamp(data.expense / data.income * 100, 0, 100) : 0) + '%"></span></div></div><div class="budget-row"><div class="budget-row-top"><strong>Comparação mensal</strong><span class="accent">' + (previous.expense ? Math.round((data.expense / previous.expense - 1) * 100) + '%' : '—') + '</span></div><div class="budget-meta"><span>versus ' + esc(monthLabel(previousMonth)) + '</span><span>pendentes: ' + money(data.pending) + '</span></div></div></div></section></div><section class="card section"><div class="section-heading"><div><h2>Patrimônio e metas</h2><p>Uma visão além do saldo do período</p></div><button class="button small ghost" data-action="open-goal">＋ Nova meta</button></div><div class="grid three-column">' + (state.goals.length ? state.goals.map(function (goal) { return '<div class="budget-row"><div class="budget-row-top"><strong>' + esc(goal.name) + '</strong><span>' + money(goal.target) + '</span></div><div class="progress teal"><span style="width:' + clamp(goal.target ? goal.saved / goal.target * 100 : 0, 0, 100) + '%"></span></div><div class="budget-meta"><span>' + money(goal.saved) + ' acumulados</span><span>' + dateBR(goal.dueDate) + '</span></div></div>'; }).join('') : '<div class="empty">Nenhuma meta cadastrada.</div>') + '</div></section></div>';
+  }
+
+  function renderTelegram() {
+    var telegramState = state.telegram || { status: 'not-configured', botUsername: '', chatId: '' };
+    var telegramTransactions = state.transactions.filter(function (item) { return (item.tags || []).indexOf('telegram') >= 0; }).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); }).slice(0, 6);
+    var configured = telegramState.status === 'configured';
+    return renderTopbar('Telegram', 'Transforme mensagens simples em lançamentos organizados') + '<div class="content"><div class="telegram-layout"><section class="card telegram-card telegram-intake"><div class="eyebrow">Entrada rápida</div><h2>Escreva como você fala</h2><p>O Todo Controle identifica valor, tipo, data, conta, cartão, categoria e mês da fatura.</p><form id="telegram-message-form"><div class="field"><label for="telegram-message">Mensagem financeira</label><textarea id="telegram-message" name="message" rows="4" placeholder="Ex.: gastei R$ 35,90 no mercado"></textarea></div><div class="telegram-examples"><button type="button" class="example-chip" data-telegram-example="gastei R$ 35,90 no mercado">gastei R$ 35,90 no mercado</button><button type="button" class="example-chip" data-telegram-example="recebi R$ 2.500,00 de salário">recebi R$ 2.500,00 de salário</button><button type="button" class="example-chip" data-telegram-example="compra R$ 89,90 no cartão Nubank, fatura outubro">compra no cartão + fatura</button></div><button class="button primary full" type="submit">＋ Registrar lançamento</button></form></section><section class="card telegram-card"><div class="section-heading"><div><div class="eyebrow">Ponte do bot</div><h2>Ponte segura do Telegram</h2><p>Esta configuração não pede nem armazena o token do bot no navegador.</p></div><span class="status ' + (configured ? 'positive' : '') + '">' + (configured ? 'configurado localmente' : 'interface pronta') + '</span></div><form id="telegram-config-form"><div class="field"><label for="telegram-bot-username">Usuário do bot</label><input id="telegram-bot-username" name="botUsername" value="' + esc(telegramState.botUsername) + '" placeholder="@todo_controle_bot" /></div><div class="field"><label for="telegram-chat-id">Chat ID vinculado</label><input id="telegram-chat-id" name="chatId" value="' + esc(telegramState.chatId) + '" placeholder="Será preenchido pelo pareamento" /></div><button class="button secondary full" type="submit">Salvar configuração local</button></form><div class="callout warning" style="margin-top:16px">O site publicado no GitHub Pages é estático. Para receber mensagens automaticamente no bot, ainda é necessário ligar um endpoint HTTPS seguro ao Telegram. Enquanto isso, esta tela já permite testar o mesmo formato de mensagem no app.</div></section></div><section class="card section"><div class="section-heading"><div><h2>Últimos lançamentos via Telegram</h2><p>Mensagens convertidas nesta instalação</p></div><button class="button small ghost" data-view="transactions">Ver transações →</button></div><div class="transaction-list">' + (telegramTransactions.length ? telegramTransactions.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento criado pelo Telegram ainda. Use um dos exemplos acima.</div>') + '</div></section></div>';
+  }
+
+  function renderCategoryModal() {
+    var roots = state.categories.filter(function (category) { return !category.parentId; });
+    return modalShell('Nova categoria', 'Organize categorias e subcategorias do seu jeito', '<form id="category-form"><div class="form-grid"><div class="field wide"><label for="category-name">Nome</label><input id="category-name" name="name" placeholder="Ex.: Educação, Moradia ou Assinaturas" required /></div><div class="field"><label for="category-parent">Categoria pai</label><select id="category-parent" name="parentId"><option value="">Categoria principal</option>' + roots.map(function (category) { return '<option value="' + esc(category.id) + '">' + esc(category.name) + '</option>'; }).join('') + '</select></div><div class="field"><label for="category-color">Cor</label><input id="category-color" name="color" type="color" value="#35c7b4" /></div></div><div class="callout" style="margin-top:14px">Use uma categoria principal para criar uma subcategoria. Os relatórios agrupam as subcategorias automaticamente.</div></form>', '<button class="button ghost" data-action="close-modal">Cancelar</button><button class="button primary" form="category-form">Criar categoria</button>');
+  }
+
+  function renderTransactionModal() {
+    var existing = modal.id ? state.transactions.find(function (item) { return item.id === modal.id; }) : null;
+    var item = existing || { type: modal.defaultType || 'expense', amount: '', description: '', date: todayISO(), accountId: state.accounts[0] && state.accounts[0].id, cardId: state.cards[0] && state.cards[0].id, categoryId: state.categories[0] && state.categories[0].id, status: 'paid', installments: 1, recurring: false, tags: [], note: '', billingMonth: state.selectedMonth };
+    var type = modal.typeValue || item.type;
+    var cardExpense = type === 'card-expense' || Boolean(item.cardId);
+    if (cardExpense && type === 'expense') type = 'card-expense';
+    var transfer = type === 'transfer';
+    var billingMonth = item.billingMonth || String(item.date || todayISO()).slice(0, 7);
+    return modalShell(existing ? 'Editar lançamento' : 'Novo lançamento', 'Preencha os detalhes e confirme antes de salvar', '<form id="transaction-form" data-id="' + esc(existing ? existing.id : '') + '"><div class="form-grid"><div class="field"><label for="tx-type">Tipo</label><select id="tx-type" name="type"><option value="expense"' + selected(type === 'expense') + '>Despesa</option><option value="income"' + selected(type === 'income') + '>Receita</option><option value="transfer"' + selected(transfer) + '>Transferência</option><option value="card-expense"' + selected(type === 'card-expense') + '>Despesa no cartão</option></select></div><div class="field"><label for="tx-amount">Valor</label><input id="tx-amount" name="amount" inputmode="decimal" placeholder="0,00" value="' + esc(item.amount || '') + '" required /></div><div class="field wide"><label for="tx-description">Descrição</label><input id="tx-description" name="description" placeholder="Ex.: Mercado, salário ou aluguel" value="' + esc(item.description || '') + '" required /></div><div class="field"><label for="tx-date">Data da compra</label><input id="tx-date" name="date" type="date" value="' + esc(item.date || todayISO()) + '" required /></div>' + (transfer ? '<div class="field"><label for="tx-from">Sai de</label><select id="tx-from" name="fromAccountId">' + optionAccounts(item.fromAccountId || item.accountId) + '</select></div><div class="field"><label for="tx-to">Vai para</label><select id="tx-to" name="toAccountId">' + optionAccounts(item.toAccountId) + '</select></div>' : cardExpense ? '<div class="field"><label for="tx-card">Cartão</label><select id="tx-card" name="cardId">' + optionCards(item.cardId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div><div class="field"><label for="tx-billing-month">Mês da fatura</label><select id="tx-billing-month" name="billingMonth">' + billingMonthOptions(billingMonth) + '</select><small>É o mês em que a cobrança aparecerá na fatura.</small></div>' : '<div class="field"><label for="tx-account">Conta</label><select id="tx-account" name="accountId">' + optionAccounts(item.accountId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div>') + (!transfer ? '<div class="field"><label for="tx-status">Status</label><select id="tx-status" name="status"><option value="paid"' + selected(item.status !== 'pending') + '>Confirmado</option><option value="pending"' + selected(item.status === 'pending') + '>Pendente</option></select></div><div class="field"><label for="tx-installments">Parcelas</label><input id="tx-installments" name="installments" type="number" min="1" max="60" value="' + esc(item.installments || 1) + '" /><small>Para cartão, cada parcela segue para o mês da fatura seguinte.</small></div><div class="field wide"><label for="tx-tags">Tags</label><input id="tx-tags" name="tags" placeholder="ex.: fixa, trabalho, família" value="' + esc((item.tags || []).join(', ')) + '" /></div><div class="field wide"><label for="tx-note">Observação</label><textarea id="tx-note" name="note" placeholder="Anote algo importante sobre este lançamento">' + esc(item.note || '') + '</textarea></div><label class="check-row wide"><input type="checkbox" name="recurring"' + checked(item.recurring) + ' /> Marcar como recorrente</label>' : '') + '</div></form>', '<button class="button ghost" data-action="close-modal">Cancelar</button><button class="button primary" form="transaction-form">Salvar lançamento</button>');
+  }
+
+  function renderImportModal() {
+    var hasRows = importRows.length > 0;
+    return modalShell('Importar fatura ou extrato', 'OFX, QFX e CSV são processados localmente no seu navegador', '<form id="import-form"><div class="field"><label for="import-file">Arquivo</label><input id="import-file" name="file" type="file" accept=".ofx,.qfx,.csv,text/csv,application/x-ofx"' + (hasRows ? '' : ' required') + ' /><small>Também reconhecemos transações de faturas de cartão em OFX/QFX com o bloco CCSTMTTRN.</small></div><div class="form-grid" style="margin-top:14px"><div class="field"><label for="import-destination-type">Destino</label><select id="import-destination-type" name="destinationType"><option value="account">Extrato de conta</option><option value="card">Fatura de cartão</option></select></div><div class="field"><label for="import-account">Conta de destino</label><select id="import-account" name="accountId">' + optionAccounts(state.accounts[0] && state.accounts[0].id) + '</select></div><div class="field"><label for="import-card">Cartão de destino</label><select id="import-card" name="cardId">' + optionCards(state.cards[0] && state.cards[0].id) + '</select></div><div class="field"><label for="import-billing-month">Mês da fatura</label><select id="import-billing-month" name="importBillingMonth">' + billingMonthOptions(state.selectedMonth) + '</select></div></div>' + (hasRows ? '<div class="import-preview"><div class="callout">' + importRows.length + ' lançamentos identificados. Revise o destino e o mês da fatura antes de confirmar.</div><table class="data-table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Fatura</th></tr></thead><tbody>' + importRows.slice(0, 12).map(function (row) { return '<tr><td>' + dateBR(row.date) + '</td><td>' + esc(row.description) + '</td><td class="' + (row.type === 'income' ? 'positive' : 'negative') + '">' + money(row.amount) + '</td><td>' + esc(row.billingMonth ? monthLabel(row.billingMonth) : 'definido acima') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '') + '</form>', '<button class="button ghost" data-action="close-modal">Cancelar</button><button class="button primary" form="import-form">' + (hasRows ? 'Importar ' + importRows.length + ' lançamentos' : 'Ler arquivo') + '</button>');
+  }
+
+  function renderModal() {
+    if (!modal) return '';
+    if (modal.type === 'transaction') return renderTransactionModal();
+    if (modal.type === 'category') return renderCategoryModal();
+    if (modal.type === 'telegram-config') return '';
+    if (modal.type === 'account') return renderAccountModal();
+    if (modal.type === 'card') return renderCardModal();
+    if (modal.type === 'budget') return renderBudgetModal();
+    if (modal.type === 'goal') return renderGoalModal();
+    if (modal.type === 'bill') return renderBillModal();
+    if (modal.type === 'import') return renderImportModal();
+    if (modal.type === 'connection') return renderConnectionModal();
+    if (modal.type === 'card-payment') return renderCardPaymentModal();
+    return '';
+  }
+
+  function renderMore() {
+    var roots = state.categories.filter(function (category) { return !category.parentId; });
+    return renderTopbar('Mais', 'Configurações, dados e ferramentas para manter o controle') + '<div class="content"><div class="grid two-column"><section class="card section"><div class="section-heading"><div><h2>Dados e backup</h2><p>Seus dados pertencem a você</p></div></div><div class="grid"><button class="button secondary full" data-action="export-json">↓ Exportar backup JSON</button><button class="button full" data-action="open-import">Importar fatura ou extrato</button><button class="button ghost full" data-action="reset-data">Restaurar dados de exemplo</button></div><div class="callout" style="margin-top:16px">O app salva os dados neste dispositivo usando armazenamento local. Exporte um backup antes de trocar de navegador ou computador.</div></section><section class="card section"><div class="section-heading"><div><h2>Preferências</h2><p>Recursos e integrações</p></div></div><div class="budget-list"><div class="budget-row"><div class="budget-row-top"><strong>Telegram</strong><span class="positive">interface pronta</span></div><div class="budget-meta"><span>Crie lançamentos por mensagens simples</span><button class="button small ghost" data-view="telegram">Abrir →</button></div></div><div class="budget-row"><div class="budget-row-top"><strong>Notificações de vencimento</strong><span class="status">em preparação</span></div><div class="budget-meta"><span>Alertas de contas e cartões</span></div></div><div class="budget-row"><div class="budget-row-top"><strong>Privacidade</strong><span class="positive">local-first</span></div><div class="budget-meta"><span>Nenhuma senha bancária é solicitada</span></div></div></div></section></div><section class="card section"><div class="section-heading"><div><h2>Categorias e subcategorias</h2><p>Personalize sua organização financeira e os filtros dos relatórios.</p></div><button class="button primary small" data-action="open-category">＋ Nova categoria</button></div><div class="category-tree">' + (roots.length ? roots.map(function (root) { var children = state.categories.filter(function (category) { return category.parentId === root.id; }); return '<div class="category-tree-item"><div class="category-row"><span class="legend-dot" style="background:' + esc(root.color || '#9a5cf2') + '"></span><strong>' + esc(root.name) + '</strong><span class="category-count">' + children.length + ' subcategorias</span></div>' + children.map(function (child) { return '<div class="category-row category-child"><span class="legend-dot" style="background:' + esc(child.color || root.color || '#9a5cf2') + '"></span><span>' + esc(child.name) + '</span><span class="category-count">subcategoria</span></div>'; }).join('') + '</div>'; }).join('') : '<div class="empty">Nenhuma categoria cadastrada.</div>') + '</div></section><section class="card section"><div class="section-heading"><div><h2>Sobre o Todo Controle</h2><p>Uma ferramenta independente inspirada em boas práticas de organização financeira.</p></div><a class="button small ghost" href="https://github.com/actualbudget/actual" target="_blank" rel="noreferrer">Ver Actual Budget →</a></div><div class="callout">Esta aplicação não é uma cópia do Mobills, do Fina ou do Actual Budget. Ela combina ideias de organização financeira em uma experiência própria.</div></section></div>';
+  }
+
+  function renderView() {
+    if (activeView === 'transactions') return renderTransactions();
+    if (activeView === 'planning') return renderPlanning();
+    if (activeView === 'accounts') return renderAccounts();
+    if (activeView === 'reports') return renderReports();
+    if (activeView === 'telegram') return renderTelegram();
+    if (activeView === 'openfinance') return renderOpenFinance();
+    if (activeView === 'more') return renderMore();
+    return renderDashboard();
+  }
+
+  function parseOFX(text) {
+    var rows = [];
+    text.split(/<(?:CC)?STMTTRN>/i).slice(1).forEach(function (block) {
+      var amount = parseMoney((block.match(/<TRNAMT>([^<\r\n]+)/i) || [])[1] || '0');
+      var date = ((block.match(/<DTPOSTED>(\d{4})(\d{2})(\d{2})/i) || []).slice(1)).join('-');
+      var description = (block.match(/<(?:NAME|MEMO)>([^<\r\n]+)/i) || [])[1] || 'Lançamento OFX';
+      var fitId = (block.match(/<FITID>([^<\r\n]+)/i) || [])[1] || '';
+      if (date && amount) rows.push({ date: date, description: description.trim(), amount: Math.abs(amount), type: amount >= 0 ? 'income' : 'expense', billingMonth: state.selectedMonth, sourceId: fitId });
+    });
+    return rows;
+  }
+
+  function parseCSV(text) {
+    var lines = text.split(/\r?\n/).filter(function (line) { return line.trim(); });
+    if (!lines.length) return [];
+    var delimiter = lines[0].indexOf(';') >= 0 ? ';' : ',';
+    var header = parseDelimitedLine(lines[0], delimiter).map(function (value) { return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); });
+    var dateIndex = header.findIndex(function (value) { return /data|date|posted/.test(value); });
+    var descriptionIndex = header.findIndex(function (value) { return /descri|histor|memo|name|estabelecimento/.test(value); });
+    var amountIndex = header.findIndex(function (value) { return /valor|amount|value|preco/.test(value); });
+    var monthIndex = header.findIndex(function (value) { return /fatura|competencia|billing|mes/.test(value); });
+    if (dateIndex < 0 || amountIndex < 0) { dateIndex = 0; descriptionIndex = 1; amountIndex = 2; }
+    return lines.slice(1).map(function (line) {
+      var values = parseDelimitedLine(line, delimiter);
+      var rawAmount = values[amountIndex] || '0';
+      var amount = parseMoney(rawAmount);
+      var date = csvDate(values[dateIndex] || '');
+      return { date: date, description: values[descriptionIndex] || 'Lançamento CSV', amount: Math.abs(amount), type: String(rawAmount).indexOf('-') >= 0 ? 'expense' : 'income', billingMonth: monthIndex >= 0 ? csvMonth(values[monthIndex]) : state.selectedMonth };
+    }).filter(function (row) { return row.date && row.amount; });
+  }
+
+  function parseTelegramMessage(message) {
+    var text = String(message || '').trim();
+    var normalized = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    var amountMatch = text.match(/r\$\s*([\d.]+(?:,\d{1,2})?)/i) || text.match(/(?:^|\s)(\d+(?:[.,]\d{1,2})?)(?:\s|$)/);
+    var amount = parseMoney(amountMatch ? amountMatch[1] : '0');
+    var type = /\b(recebi|receita|salario|entrada|ganhei|venda|deposito)\b/i.test(normalized) ? 'income' : 'expense';
+    var date = todayISO();
+    var dateMatch = normalized.match(/\b(?:dia|em)\s+(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/);
+    if (dateMatch) { var year = dateMatch[3] ? Number(dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3]) : Number(todayISO().slice(0, 4)); date = year + '-' + pad(Number(dateMatch[2])) + '-' + pad(Number(dateMatch[1])); }
+    var monthIndex = -1;
+    monthNames.forEach(function (name, index) { if (normalized.indexOf(name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) >= 0) monthIndex = index; });
+    var yearMatch = normalized.match(/\b(20\d{2})\b/);
+    var billingMonth = monthIndex >= 0 ? (yearMatch ? yearMatch[1] : String(todayISO().slice(0, 4))) + '-' + pad(monthIndex + 1) : date.slice(0, 7);
+    var card = state.cards.slice().sort(function (a, b) { return b.name.length - a.name.length; }).find(function (item) { return normalized.indexOf(item.name.toLowerCase()) >= 0; });
+    var cardId = card ? card.id : (/\bcartao\b|\bfatura\b/i.test(normalized) && state.cards[0] ? state.cards[0].id : '');
+    var account = state.accounts.slice().sort(function (a, b) { return b.name.length - a.name.length; }).find(function (item) { return normalized.indexOf(item.name.toLowerCase()) >= 0; });
+    var category = state.categories.slice().sort(function (a, b) { return b.name.length - a.name.length; }).find(function (item) { return normalized.indexOf(item.name.toLowerCase()) >= 0; });
+    var description = text.replace(/r\$\s*[\d.]+(?:,\d{1,2})?/ig, '').replace(/(?:^|\s)(?:gastei|paguei|compra|despesa|recebi|receita|ganhei|entrada|venda|deposito)(?=\s|$)/ig, '').replace(/\b(?:dia|em)\s+\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?/ig, '').replace(/\b(?:fatura|vencimento|mes|mês)\s+(?:de\s+)?[a-zç]+(?:\s+20\d{2})?/ig, '').replace(/\bcart[aã]o\b/ig, '').replace(/\s+/g, ' ').replace(/^\s*(?:no|na|em|de)\s+/i, '').replace(/[,-]+$/, '').trim();
+    return { amount: amount, type: cardId ? 'expense' : type, date: date, description: description || 'Lançamento via Telegram', accountId: cardId ? '' : account ? account.id : (state.accounts[0] && state.accounts[0].id), cardId: cardId, categoryId: category ? category.id : '', billingMonth: billingMonth };
+  }
+
+  function exportFilteredCSV() {
+    var rows = [['data', 'descricao', 'tipo', 'categoria', 'conta_cartao', 'valor', 'mes_fatura']];
+    reportTransactions().forEach(function (item) { var owner = item.cardId ? cardById(item.cardId) : accountById(item.accountId); rows.push([item.date, item.description, item.type, displayCategory(item), owner ? owner.name : '', String(item.amount).replace('.', ','), item.billingMonth || '']); });
+    download('todo-controle-relatorio.csv', rows.map(function (row) { return row.map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n'), 'text/csv;charset=utf-8');
+    showToast('Relatório filtrado exportado.');
+  }
+
   function handleClick(event) {
+    var target = event.target.closest('button, a, .modal-backdrop');
+    if (!target) return;
+    var example = target.getAttribute('data-telegram-example');
+    if (example) { var messageInput = document.getElementById('telegram-message'); if (messageInput) { messageInput.value = example; messageInput.focus(); } return; }
+    var action = target.getAttribute('data-action');
+    if (action === 'open-category') { modal = { type: 'category' }; render(); return; }
+    if (action === 'reset-report-filters') { reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; render(); return; }
+    if (action === 'export-filtered-csv') { exportFilteredCSV(); return; }
+    var view = target.getAttribute('data-view');
+    if (view) { activeCardFilter = 'all'; activeCategoryFilter = 'all'; activeAccountFilter = 'all'; reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; }
+    legacyHandleClick(event);
+  }
+
+  function handleChange(event) {
+    var target = event.target;
+    if (target.id === 'transaction-card-filter') { activeCardFilter = target.value; render(); return; }
+    if (target.id === 'transaction-category-filter') { activeCategoryFilter = target.value; render(); return; }
+    if (target.id === 'transaction-account-filter') { activeAccountFilter = target.value; render(); return; }
+    if (target.id === 'report-start') { reportStartDate = target.value; render(); return; }
+    if (target.id === 'report-end') { reportEndDate = target.value; render(); return; }
+    if (target.id === 'report-card-filter') { reportCardFilter = target.value; render(); return; }
+    if (target.id === 'report-category-filter') { reportCategoryFilter = target.value; render(); return; }
+    legacyHandleChange(event);
+  }
+
+  function handleSubmit(event) {
+    var form = event.target;
+    if (form.id === 'category-form') {
+      event.preventDefault();
+      var categoryData = formData(form);
+      var categoryName = String(categoryData.name || '').trim();
+      if (!categoryName) { showToast('Informe o nome da categoria.'); return; }
+      if (state.categories.some(function (category) { return category.name.toLowerCase() === categoryName.toLowerCase() && String(category.parentId || '') === String(categoryData.parentId || ''); })) { showToast('Essa categoria já existe nesse nível.'); return; }
+      state.categories.push({ id: uid('cat'), name: categoryName, parentId: categoryData.parentId || '', color: categoryData.color || '#35c7b4' });
+      save(); closeAll(); showToast('Categoria criada.'); return;
+    }
+    if (form.id === 'telegram-config-form') {
+      event.preventDefault();
+      var telegramConfig = formData(form);
+      state.telegram = { status: telegramConfig.botUsername || telegramConfig.chatId ? 'configured' : 'not-configured', botUsername: telegramConfig.botUsername || '', chatId: telegramConfig.chatId || '' };
+      save(); render(); showToast('Configuração local do Telegram salva.'); return;
+    }
+    if (form.id === 'telegram-message-form') {
+      event.preventDefault();
+      var telegramData = formData(form);
+      var parsed = parseTelegramMessage(telegramData.message);
+      if (!parsed.amount) { showToast('Informe um valor, por exemplo: R$ 35,90.'); return; }
+      state.transactions.push({ id: uid('tx'), date: parsed.date, description: parsed.description, type: parsed.type, amount: parsed.amount, accountId: parsed.accountId || '', cardId: parsed.cardId || '', billingMonth: parsed.cardId ? parsed.billingMonth : '', categoryId: parsed.categoryId || '', status: 'paid', tags: ['telegram'], note: 'Criado a partir de uma mensagem do Telegram' });
+      save(); render(); showToast('Lançamento criado a partir do Telegram.'); return;
+    }
+    if (form.id === 'transaction-form') {
+      event.preventDefault();
+      var data = formData(form);
+      var inputType = data.type;
+      var type = inputType;
+      var amount = parseMoney(data.amount);
+      if (!amount || !data.description) { showToast('Informe descrição e valor.'); return; }
+      if (type === 'card-expense') type = 'expense';
+      if (type === 'transfer' && data.fromAccountId === data.toAccountId) { showToast('Escolha contas diferentes para a transferência.'); return; }
+      var installments = Math.max(1, Number(data.installments || 1));
+      var purchaseDate = data.date || todayISO();
+      var invoiceMonth = inputType === 'card-expense' ? (data.billingMonth || purchaseDate.slice(0, 7)) : '';
+      var base = { description: data.description, amount: amount, date: purchaseDate, status: data.status || 'paid', tags: data.tags ? data.tags.split(',').map(function (tag) { return tag.trim(); }).filter(Boolean) : [], note: data.note || '', recurring: Boolean(data.recurring), billingMonth: invoiceMonth };
+      var id = form.getAttribute('data-id');
+      if (id) {
+        var existing = state.transactions.find(function (item) { return item.id === id; });
+        if (existing) Object.assign(existing, base, type === 'transfer' ? { type: 'transfer', fromAccountId: data.fromAccountId, toAccountId: data.toAccountId, accountId: '', cardId: '', categoryId: '', billingMonth: '' } : { type: type, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', fromAccountId: '', toAccountId: '' });
+        showToast('Lançamento atualizado.');
+      } else {
+        for (var index = 0; index < installments; index += 1) state.transactions.push(Object.assign({}, base, { id: uid('tx'), type: type, date: addMonths(base.date, index), billingMonth: inputType === 'card-expense' ? addMonths(invoiceMonth + '-01', index).slice(0, 7) : '', installmentNumber: installments > 1 ? index + 1 : 0, installments: installments > 1 ? installments : 0, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', fromAccountId: data.fromAccountId || '', toAccountId: data.toAccountId || '' }));
+        showToast('Lançamento adicionado.');
+      }
+      save(); closeAll(); return;
+    }
+    if (form.id === 'import-form') {
+      event.preventDefault();
+      var file = form.querySelector('input[type="file"]').files[0];
+      if (!importRows.length && file) { readImportFile(file); return; }
+      if (!importRows.length) { showToast('Selecione um arquivo primeiro.'); return; }
+      var destinationType = formData(form).destinationType || 'account';
+      var importData = formData(form);
+      var importedAccountId = destinationType === 'card' ? '' : importData.accountId || (state.accounts[0] && state.accounts[0].id);
+      var importedCardId = destinationType === 'card' ? importData.cardId || (state.cards[0] && state.cards[0].id) : '';
+      importRows.forEach(function (row) { state.transactions.push({ id: uid('tx'), date: row.date, description: row.description, type: row.type, amount: row.amount, accountId: importedAccountId, cardId: importedCardId, billingMonth: destinationType === 'card' ? (row.billingMonth || importData.importBillingMonth || state.selectedMonth) : '', categoryId: '', status: 'paid', tags: ['importado', destinationType === 'card' ? 'fatura-cartao' : 'extrato'], note: 'Importado localmente' }); });
+      var importedCount = importRows.length;
+      save(); closeAll(); showToast(importedCount + ' lançamentos importados.'); return;
+    }
+    legacyHandleSubmit(event);
+  }
+
+  function legacyHandleClick(event) {
     var target = event.target.closest('button, a, .modal-backdrop');
     if (!target) return;
     var view = target.getAttribute('data-view');
@@ -396,7 +699,7 @@
     if (action === 'reset-data' && window.confirm('Restaurar dados de exemplo? Seus dados locais atuais serão substituídos.')) { state = defaultState(); save(); render(); showToast('Dados de exemplo restaurados.'); }
   }
   function formData(form) { var result = {}; new FormData(form).forEach(function (value, key) { result[key] = value; }); return result; }
-  function handleSubmit(event) {
+  function legacyHandleSubmit(event) {
     var form = event.target;
     event.preventDefault();
     var data = formData(form);
@@ -436,7 +739,7 @@
       save(); closeAll(); showToast(importedCount + ' lançamentos importados.'); return;
     }
   }
-  function handleChange(event) {
+  function legacyHandleChange(event) {
     var target = event.target;
     if (target.id === 'month-picker') { state.selectedMonth = target.value; save(); render(); return; }
     if (target.id === 'tx-type' && modal && modal.type === 'transaction') { modal.typeValue = target.value; render(); return; }

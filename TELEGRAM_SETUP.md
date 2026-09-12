@@ -27,13 +27,13 @@ O backend grava o identificador do update do Telegram e ignora reenvios duplicad
 
 O backend financeiro foi transferido para um projeto Cloudflare separado do Telegram das vagas. Não compartilhe com o serviço de vagas o bot, o webhook, o token ou o banco.
 
-URL do backend:
+URL do backend na sua conta Cloudflare:
 
-https://todo-controle-telegram-backend.gptparatres25.chatgpt.site
+https://todo-controle-telegram.edsonjunioor32.workers.dev
 
 Webhook:
 
-https://todo-controle-telegram-backend.gptparatres25.chatgpt.site/telegram/webhook
+https://todo-controle-telegram.edsonjunioor32.workers.dev/telegram/webhook
 
-Use um segundo bot criado no BotFather e configure os segredos no novo projeto Cloudflare.
+Esse Worker e o banco D1 pertencem a sua conta Cloudflare e permanecem separados do servico de vagas. Use um segundo bot criado no BotFather e configure os segredos nele.
 

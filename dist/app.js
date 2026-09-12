@@ -13,40 +13,152 @@
   var toastTimer = null;
   var theme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   var monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  var colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'];
-
-  /* ==========================================================================
-     SVG ICON SYSTEM (LUCIDE / ONLOOK MODERN FINTECH ICONS)
+  var colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'];  /* ==========================================================================
+     CUSTOM HIGH-CRAFT SVG ICON SYSTEM (DUOTONE & MULTI-LAYER FINTECH ICONS)
      ========================================================================== */
   function svgIcon(name, size) {
     var s = size || 18;
     var icons = {
-      'dashboard': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1.5"/><rect width="7" height="5" x="14" y="3" rx="1.5"/><rect width="7" height="9" x="14" y="12" rx="1.5"/><rect width="7" height="5" x="3" y="16" rx="1.5"/></svg>',
-      'transactions': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>',
-      'planning': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
-      'accounts': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2.5"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
-      'reports': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
-      'openfinance': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
-      'more': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
-      'plus': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
-      'income': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>',
-      'expense': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>',
-      'transfer': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>',
-      'wallet': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a8 8 0 0 1-8 5H6a2 2 0 0 1-2-2V7"/></svg>',
-      'sun': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>',
+      // Sidebar Navigation (Duotone with filled layers)
+      'dashboard': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7.5" height="9.5" rx="2" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="2" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="15.5" width="7.5" height="5.5" rx="2" stroke="currentColor" stroke-width="1.8"/></svg>',
+      'transactions': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="18" r="3.5" fill="currentColor" fill-opacity="0.2"/><path d="M7 5v13m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="17" cy="6" r="3.5" fill="currentColor" fill-opacity="0.2"/><path d="M17 19V6m0 0 3 3m-3-3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'planning': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      'accounts': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="13" width="4" height="3" rx="1" fill="currentColor" stroke="none"/><circle cx="17" cy="14.5" r="1.5" fill="currentColor"/></svg>',
+      'reports': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><rect x="3" y="13" width="4" height="8" rx="1.5" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.8"/><rect x="10" y="8" width="4" height="13" rx="1.5" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.8"/><rect x="17" y="4" width="4" height="17" rx="1.5" fill="currentColor" stroke="currentColor" stroke-width="1.8"/><path d="m3 11 7-5 4 3 7-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'openfinance': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h7l-1 8 10-12h-7l1-8z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.5" cy="4.5" r="1.8" fill="currentColor"/><circle cx="19.5" cy="19.5" r="1.8" fill="currentColor"/></svg>',
+      'more': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+      // Alert & Status Custom Icons
+      'pending-alert': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="6" r="3" fill="#F59E0B" stroke="#131927" stroke-width="2"/></svg>',
+      'bill-alert': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="18.5" cy="5.5" r="3" fill="#06B6D4" stroke="#131927" stroke-width="2"/><path d="M3 5.5a4 4 0 0 1 2-2M21 5.5a4 4 0 0 0-2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      'card-alert': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="13" width="4.5" height="3" rx="1" fill="#F59E0B"/><path d="M16 13h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="18.5" cy="5.5" r="3" fill="#6366F1" stroke="#131927" stroke-width="2"/></svg>',
+
+      // Metric Card Icons
+      'wallet-vault': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 6v1.5M12 16.5V18M6 12h1.5M16.5 12H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      'income-surge': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 8.5-7 7M8.5 8.5h7v7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'expense-burn': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.8"/><path d="m8.5 8.5 7 7M15.5 8.5v7h-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'balance-scale': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M4 8l8-4 8 4M6 15l-3-6h6l-3 6a3 3 0 0 1-6 0M18 15l-3-6h6l-3 6a3 3 0 0 1-6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="20" r="1.8" fill="currentColor"/></svg>',
+
+      // Actions & Controls
+      'plus': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+      'sun': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
       'moon': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',
-      'trash': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+      'trash': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
       'edit': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
-      'close': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
-      'check': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-      'arrow-right': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+      'close': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+      'check': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+      'arrow-right': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
       'menu': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>',
       'credit-card': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
-      'trending-up': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
-      'trending-down': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>',
-      'bell': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
+      'income': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.18"/><path d="m15 9-6 6M9 9h6v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'expense': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.18"/><path d="m9 9 6 6m0-6v6H9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'transfer': '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none"><path d="M8 4 4 8l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 8h12a4 4 0 0 1 4 4v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m16 20 4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 16H8a4 4 0 0 1-4-4v-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
     };
     return icons[name] || icons['dashboard'];
+  }
+
+  /* ==========================================================================
+     CUSTOM BRANDED BADGES FOR INSTITUTIONS & CREDIT CARDS
+     ========================================================================== */
+  function renderAccountBadge(account) {
+    var name = (account.name || '').toLowerCase();
+    var inst = (account.institution || '').toLowerCase();
+    var type = (account.type || '').toLowerCase();
+
+    // Nubank
+    if (name.indexOf('nubank') >= 0 || inst.indexOf('nubank') >= 0) {
+      return '<div class="account-badge badge-nubank" title="Nubank">' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+          '<path d="M7 19V9l7 10V9" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<path d="M21 9v10c0 1.1-.9 2-2 2h-1c-1.1 0-2-.9-2-2V9" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>' +
+        '</svg>' +
+      '</div>';
+    }
+
+    // XP Investimentos
+    if (name.indexOf('xp') >= 0 || inst.indexOf('xp') >= 0) {
+      return '<div class="account-badge badge-xp" title="XP">' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+          '<path d="M6 6l16 16M22 6L6 22" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>' +
+          '<circle cx="14" cy="14" r="3" fill="#00E5FF"/>' +
+        '</svg>' +
+      '</div>';
+    }
+
+    // Reserva / Selic / Tesouro / Investimento
+    if (name.indexOf('reserva') >= 0 || inst.indexOf('selic') >= 0 || inst.indexOf('tesouro') >= 0 || type.indexOf('investimento') >= 0) {
+      return '<div class="account-badge badge-vault" title="Reserva / Investimento">' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+          '<rect x="3.5" y="4.5" width="21" height="19" rx="3.5" fill="rgba(255,255,255,0.18)" stroke="#A7F3D0" stroke-width="2"/>' +
+          '<circle cx="14" cy="14" r="5" stroke="#34D399" stroke-width="2"/>' +
+          '<circle cx="14" cy="14" r="2" fill="#34D399"/>' +
+          '<path d="M14 7v2M14 19v2M7 14h2M19 14h2" stroke="#A7F3D0" stroke-width="2" stroke-linecap="round"/>' +
+        '</svg>' +
+      '</div>';
+    }
+
+    // Inter
+    if (name.indexOf('inter') >= 0 || inst.indexOf('inter') >= 0) {
+      return '<div class="account-badge badge-inter" title="Banco Inter">' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+          '<path d="M6 7h4v14H6zM13 11h4v10h-4zM20 14h2v7h-2z" fill="#FFFFFF"/>' +
+        '</svg>' +
+      '</div>';
+    }
+
+    // Carteira / Dinheiro físico
+    if (name.indexOf('carteira') >= 0 || inst.indexOf('dinheiro') >= 0 || type.indexOf('carteira') >= 0) {
+      return '<div class="account-badge badge-wallet" title="Carteira">' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+          '<path d="M23 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2" stroke="#FFFFFF" stroke-width="2"/>' +
+          '<rect x="14" y="10" width="10" height="8" rx="2" fill="#FDE68A" stroke="#FFFFFF" stroke-width="1.8"/>' +
+          '<circle cx="19" cy="14" r="1.5" fill="#92400E"/>' +
+        '</svg>' +
+      '</div>';
+    }
+
+    // Default Bank Crest
+    return '<div class="account-badge badge-bank" style="background:' + esc(account.color || 'linear-gradient(135deg, #0284C7, #0369A1)') + '" title="' + esc(account.name) + '">' +
+      '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
+        '<path d="M4 23h20M4 11h20M6 11v9M10 11v9M18 11v9M22 11v9M14 4 3 9h22L14 4z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>' +
+    '</div>';
+  }
+
+  function renderCardBadge(card) {
+    var name = (card.name || '').toLowerCase();
+    var brand = (card.brand || '').toLowerCase();
+
+    var badgeClass = 'badge-card-default';
+    var chipColor = '#FBBF24';
+    var waveColor = 'rgba(255,255,255,0.75)';
+
+    if (name.indexOf('nubank') >= 0 || name.indexOf('ultravioleta') >= 0) {
+      badgeClass = 'badge-card-nubank';
+      chipColor = '#E9D5FF';
+    } else if (name.indexOf('xp') >= 0 || name.indexOf('infinite') >= 0) {
+      badgeClass = 'badge-card-xp';
+      chipColor = '#38BDF8';
+    } else if (name.indexOf('inter') >= 0 || name.indexOf('black') >= 0) {
+      badgeClass = 'badge-card-inter';
+      chipColor = '#FDE68A';
+    } else if (name.indexOf('c6') >= 0) {
+      badgeClass = 'badge-card-c6';
+      chipColor = '#E2E8F0';
+    }
+
+    return '<div class="card-badge ' + badgeClass + '" title="' + esc(card.name) + '">' +
+      '<svg width="26" height="26" viewBox="0 0 32 32" fill="none">' +
+        '<rect x="2" y="5" width="28" height="22" rx="3.5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>' +
+        '<rect x="5.5" y="8.5" width="6.5" height="5.5" rx="1.5" fill="' + chipColor + '" stroke="rgba(0,0,0,0.2)" stroke-width="0.8"/>' +
+        '<path d="M8.75 8.5v5.5M5.5 11.25h6.5" stroke="rgba(0,0,0,0.35)" stroke-width="0.7"/>' +
+        '<path d="M23 8c1.6 1.6 1.6 4.4 0 6M25 6c2.7 2.7 2.7 7.3 0 10" stroke="' + waveColor + '" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<rect x="5.5" y="18" width="14" height="2" rx="1" fill="rgba(255,255,255,0.85)"/>' +
+        '<rect x="5.5" y="22" width="9" height="1.6" rx="0.8" fill="rgba(255,255,255,0.5)"/>' +
+        '<circle cx="22.5" cy="21.5" r="3.2" fill="rgba(255,255,255,0.45)"/>' +
+        '<circle cx="26" cy="21.5" r="3.2" fill="rgba(255,255,255,0.7)"/>' +
+      '</svg>' +
+    '</div>';
   }
 
   /* ==========================================================================
@@ -361,9 +473,7 @@
   function accountMarkup(account) {
     return '<div class="account-row">' +
       '<div class="account-main">' +
-        '<span class="account-badge" style="background:' + esc(account.color || '#10b981') + '">' +
-          esc(account.name.slice(0, 1).toUpperCase()) +
-        '</span>' +
+        renderAccountBadge(account) +
         '<div>' +
           '<strong>' + esc(account.name) + '</strong>' +
           '<span>' + esc(account.institution || account.type || 'Conta') + '</span>' +
@@ -382,9 +492,7 @@
     return '<div class="card-row" style="display:flex; flex-direction:column; align-items:stretch">' +
       '<div style="display:flex; align-items:center; justify-content:space-between; width:100%">' +
         '<div class="card-main">' +
-          '<span class="card-badge" style="background:' + esc(card.color || '#6366f1') + '">' +
-            svgIcon('credit-card', 18) +
-          '</span>' +
+          renderCardBadge(card) +
           '<div>' +
             '<strong>' + esc(card.name) + '</strong>' +
             '<span>' + esc(card.brand || 'Cartão') + ' · vence dia ' + esc(card.dueDay || '-') + '</span>' +
@@ -395,10 +503,10 @@
           '<span>fatura atual</span>' +
         '</div>' +
       '</div>' +
-      '<div class="progress ' + (percentage > 85 ? 'red' : 'indigo') + '" style="margin-top:12px">' +
+      '<div class="progress ' + (percentage > 85 ? 'red' : 'indigo') + '" style="margin-top:14px">' +
         '<span style="width:' + percentage + '%"></span>' +
       '</div>' +
-      '<div class="budget-meta" style="margin-top:6px">' +
+      '<div class="budget-meta" style="margin-top:8px">' +
         '<span>Limite: ' + money(card.limit) + '</span>' +
         '<span>' + Math.round(percentage) + '% utilizado</span>' +
       '</div>' +
@@ -477,7 +585,7 @@
           '<div class="card summary-card net-balance">' +
             '<div class="summary-card-header">' +
               '<span class="label">Saldo Consolidado</span>' +
-              '<span class="summary-card-badge">' + svgIcon('wallet', 16) + '</span>' +
+              '<span class="summary-card-badge">' + svgIcon('wallet-vault', 18) + '</span>' +
             '</div>' +
             '<div class="value ' + (data.balance < 0 ? 'negative' : 'positive') + '">' + money(data.balance) + '</div>' +
             '<div class="helper">' + svgIcon('check', 13) + ' Total em contas e reservas</div>' +
@@ -485,7 +593,7 @@
           '<div class="card summary-card income">' +
             '<div class="summary-card-header">' +
               '<span class="label">Receitas do Mês</span>' +
-              '<span class="summary-card-badge" style="color:var(--green)">' + svgIcon('trending-up', 16) + '</span>' +
+              '<span class="summary-card-badge" style="color:var(--green)">' + svgIcon('income-surge', 18) + '</span>' +
             '</div>' +
             '<div class="value positive">' + money(data.income) + '</div>' +
             '<div class="helper">' + svgIcon('income', 13) + ' Total de entradas</div>' +
@@ -493,7 +601,7 @@
           '<div class="card summary-card expense">' +
             '<div class="summary-card-header">' +
               '<span class="label">Despesas do Mês</span>' +
-              '<span class="summary-card-badge" style="color:var(--red)">' + svgIcon('trending-down', 16) + '</span>' +
+              '<span class="summary-card-badge" style="color:var(--red)">' + svgIcon('expense-burn', 18) + '</span>' +
             '</div>' +
             '<div class="value negative">' + money(data.expense) + '</div>' +
             '<div class="helper">' + svgIcon('expense', 13) + ' Total de saídas</div>' +
@@ -501,7 +609,7 @@
           '<div class="card summary-card limit">' +
             '<div class="summary-card-header">' +
               '<span class="label">Balanço do Mês</span>' +
-              '<span class="summary-card-badge" style="color:var(--teal)">' + svgIcon('planning', 16) + '</span>' +
+              '<span class="summary-card-badge" style="color:var(--teal)">' + svgIcon('balance-scale', 18) + '</span>' +
             '</div>' +
             '<div class="value ' + (data.monthly < 0 ? 'negative' : 'positive') + '">' + money(data.monthly) + '</div>' +
             '<div class="helper">' + data.transactions.length + ' lançamentos registrados</div>' +
@@ -510,21 +618,21 @@
 
         '<div class="grid alert-grid" style="margin-bottom:24px">' +
           '<div class="alert-card">' +
-            '<span class="alert-icon">' + svgIcon('expense', 18) + '</span>' +
+            '<span class="alert-icon red">' + svgIcon('pending-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + money(data.pending) + '</strong>' +
               '<span>Lançamentos pendentes de confirmação</span>' +
             '</div>' +
           '</div>' +
           '<div class="alert-card">' +
-            '<span class="alert-icon teal">' + svgIcon('bell', 18) + '</span>' +
+            '<span class="alert-icon teal">' + svgIcon('bill-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + money(data.openBills) + '</strong>' +
               '<span>Contas a pagar neste mês</span>' +
             '</div>' +
           '</div>' +
           '<div class="alert-card">' +
-            '<span class="alert-icon yellow">' + svgIcon('credit-card', 18) + '</span>' +
+            '<span class="alert-icon yellow">' + svgIcon('card-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + state.cards.filter(function (card) { return cardBill(card.id, state.selectedMonth) > 0; }).length + ' cartões ativos</strong>' +
               '<span>Faturas com lançamentos no período</span>' +
@@ -827,7 +935,7 @@
                 return '<div class="card-row" style="display:flex; flex-direction:column; align-items:stretch">' +
                   '<div style="display:flex; align-items:center; justify-content:space-between; width:100%">' +
                     '<div class="card-main">' +
-                      '<span class="card-badge" style="background:' + esc(card.color || '#6366f1') + '">' + svgIcon('credit-card', 18) + '</span>' +
+                      '' + renderCardBadge(card) + '' +
                       '<div>' +
                         '<strong>' + esc(card.name) + '</strong>' +
                         '<span>' + esc(card.brand || 'Cartão') + ' · Fecha dia ' + esc(card.closingDay || '-') + ' · Vence dia ' + esc(card.dueDay || '-') + '</span>' +

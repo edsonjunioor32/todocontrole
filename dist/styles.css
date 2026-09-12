@@ -1783,3 +1783,168 @@ input[type="checkbox"] {
   .telegram-card h2 { font-size: 27px; }
   .category-child { padding-left: 21px; }
 }
+
+/* ==========================================================================
+   HIGH-CRAFT FINTECH BADGES & ICON SYSTEM
+   ========================================================================== */
+
+.account-badge, .card-badge {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.account-row:hover .account-badge,
+.card-row:hover .card-badge {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+/* Specific Institution Badges */
+.badge-nubank {
+  background: linear-gradient(135deg, #820AD1 0%, #4A0072 100%) !important;
+  border-color: rgba(192, 132, 252, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(130, 10, 209, 0.45), inset 0 1px 1.5px rgba(255, 255, 255, 0.4) !important;
+}
+
+.badge-xp {
+  background: linear-gradient(135deg, #18181B 0%, #000000 100%) !important;
+  border-color: rgba(255, 215, 0, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 1px 1.5px rgba(255, 215, 0, 0.35) !important;
+}
+
+.badge-vault {
+  background: linear-gradient(135deg, #059669 0%, #064E3B 100%) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(5, 150, 105, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-inter {
+  background: linear-gradient(135deg, #FF7A00 0%, #C2410C 100%) !important;
+  border-color: rgba(251, 146, 60, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(255, 122, 0, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-wallet {
+  background: linear-gradient(135deg, #D97706 0%, #78350F 100%) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(217, 119, 6, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-bank {
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Card Specific Badges */
+.badge-card-nubank {
+  background: linear-gradient(135deg, #7E22CE 0%, #3B0764 100%) !important;
+  border-color: rgba(192, 132, 252, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(126, 34, 206, 0.45), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-card-xp {
+  background: linear-gradient(135deg, #0F172A 0%, #020617 100%) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(2, 6, 23, 0.6), inset 0 1px 1.5px rgba(56, 189, 248, 0.3) !important;
+}
+
+.badge-card-inter {
+  background: linear-gradient(135deg, #EA580C 0%, #7C2D12 100%) !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(234, 88, 12, 0.45), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-card-c6 {
+  background: linear-gradient(135deg, #27272A 0%, #09090B 100%) !important;
+  border-color: rgba(212, 212, 216, 0.35) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+.badge-card-default {
+  background: linear-gradient(135deg, #4F46E5 0%, #312E81 100%) !important;
+  border-color: rgba(129, 140, 248, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(79, 70, 229, 0.4), inset 0 1px 1.5px rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Alert Icons with Vibrant Glowing Halos */
+.alert-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.alert-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.alert-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.alert-card:hover .alert-icon {
+  transform: scale(1.08);
+}
+
+.alert-icon.red {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.22) 0%, rgba(244, 63, 94, 0.06) 100%) !important;
+  color: #FB7185 !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
+  box-shadow: 0 4px 18px rgba(244, 63, 94, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+.alert-icon.teal {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.22) 0%, rgba(6, 182, 212, 0.06) 100%) !important;
+  color: #22D3EE !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  box-shadow: 0 4px 18px rgba(6, 182, 212, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+.alert-icon.yellow {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.06) 100%) !important;
+  color: #FBBF24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Metric Card Badge with Inner Glow */
+.summary-card-badge {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.summary-card:hover .summary-card-badge {
+  transform: scale(1.06);
+  border-color: var(--line-strong);
+}

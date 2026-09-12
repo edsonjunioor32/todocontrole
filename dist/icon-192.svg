@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Todo Controle">
+  <rect width="192" height="192" rx="52" fill="#0B151B"/>
+  <rect x="25" y="25" width="142" height="142" rx="40" fill="#10B981"/>
+  <path d="M61 96h70M96 61v70" fill="none" stroke="#062B2B" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="145" cy="47" r="14" fill="#F7C948"/>
+</svg>

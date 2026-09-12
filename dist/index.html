@@ -6,6 +6,12 @@
     <meta name="theme-color" content="#090D16" id="theme-color-meta" />
     <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%2310b981'/%3E%3Cpath d='M14 24h20M24 14v20' stroke='%23042f2e' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icon-192.svg" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Todo Controle" />
     <meta name="description" content="Todo Controle — Gestão financeira inteligente, moderna e intuitiva para suas contas, cartões, despesas e orçamentos." />
     <link rel="canonical" href="https://edsonjunioor32.github.io/todocontrole/" />
     
@@ -33,5 +39,12 @@
     <div id="app"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./app.js" defer></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

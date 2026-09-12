@@ -2478,6 +2478,17 @@
     if (action === 'toggle-mobile-more') { mobileMenuOpen = !mobileMenuOpen; render(); return; }
     if (action === 'copy-telegram-code') { copyTelegramPairingCode(); return; }
     if (action === 'sync-telegram') { syncTelegram(false); return; }
+    if (action === 'delete-all-transactions') {
+      var transactionCount = state.transactions.length;
+      if (!transactionCount) { showToast('Não há lançamentos para excluir.'); return; }
+      if (window.confirm('Excluir todos os ' + transactionCount + ' lançamentos? Esta ação não pode ser desfeita.')) {
+        state.transactions = [];
+        save();
+        render();
+        showToast('Todos os lançamentos foram excluídos.');
+      }
+      return;
+    }
     if (action === 'open-category') { modal = { type: 'category' }; render(); return; }
     if (action === 'reset-report-filters') { reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; render(); return; }
     if (action === 'export-filtered-csv') { exportFilteredCSV(); return; }
@@ -2602,7 +2613,7 @@
       '<div class="content">' +
         '<div class="grid two-column">' +
           '<section class="card section"><div class="section-heading"><div><h2>Backup e Portabilidade</h2><p>Seus dados permanecem sob o seu total controle</p></div></div>' +
-            '<div class="grid" style="gap:12px"><button class="button secondary full" data-action="export-json">Exportar Backup Completo (JSON)</button><button class="button outline full" data-action="open-import">Importar Fatura ou Extrato</button><button class="button danger full" data-action="reset-data">Restaurar Dados Padrão</button></div>' +
+            '<div class="grid" style="gap:12px"><button class="button secondary full" data-action="export-json">Exportar Backup Completo (JSON)</button><button class="button outline full" data-action="open-import">Importar Fatura ou Extrato</button><button class="button danger full" data-action="delete-all-transactions">Excluir todos os lançamentos</button><button class="button danger full" data-action="reset-data">Restaurar Dados Padrão</button></div>' +
             '<div class="callout" style="margin-top:18px">O app salva dados neste dispositivo usando armazenamento local. Exporte um backup antes de trocar de navegador ou computador.</div>' +
           '</section>' +
           '<section class="card section"><div class="section-heading"><div><h2>Integrações</h2><p>Recursos conectados ao seu fluxo</p></div></div>' +

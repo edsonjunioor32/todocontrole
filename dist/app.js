@@ -11,6 +11,8 @@
   var quickMenu = false;
   var importRows = [];
   var toastTimer = null;
+  var telegramSyncing = false;
+  var TELEGRAM_API_DEFAULT = 'https://todo-controle.gptparatres25.chatgpt.site';
   var theme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   var monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   var colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'];
@@ -105,6 +107,7 @@
         { id: 'bill-2', description: 'Internet Fibra 600MB', amount: 149.90, dueDate: month + '-15', categoryId: 'cat-home', status: 'open', recurring: true }
       ],
       connections: [],
+      telegram: { status: 'not-configured', apiUrl: TELEGRAM_API_DEFAULT, botUsername: '', chatId: '', pairToken: '', pairingCode: '', pairingExpiresAt: '', lastSyncCursor: 0 },
       transactions: [
         { id: 't-1', date: month + '-01', description: 'Salário Mensal', type: 'income', amount: 8500.00, accountId: 'account-main', categoryId: 'cat-salary', status: 'paid', recurring: true, tags: ['fixo'] },
         { id: 't-2', date: month + '-03', description: 'Supermercado Pão de Açúcar', type: 'expense', amount: 489.30, cardId: 'card-nubank', categoryId: 'cat-food', status: 'paid', tags: ['essencial'] },
@@ -153,6 +156,7 @@
     base.goals = Array.isArray(value.goals) ? value.goals : base.goals;
     base.bills = Array.isArray(value.bills) ? value.bills : base.bills;
     base.connections = Array.isArray(value.connections) ? value.connections : [];
+    base.telegram = value.telegram && typeof value.telegram === 'object' ? value.telegram : base.telegram;
     base.transactions = Array.isArray(value.transactions) ? value.transactions : base.transactions;
     base.selectedMonth = typeof value.selectedMonth === 'string' && value.selectedMonth ? value.selectedMonth : currentMonth();
     return base;
@@ -178,7 +182,7 @@
   }
 
   var state = loadState();
-  state.telegram = state.telegram || { status: 'not-configured', botUsername: '', chatId: '' };
+  state.telegram = Object.assign({ status: 'not-configured', apiUrl: TELEGRAM_API_DEFAULT, botUsername: '', chatId: '', pairToken: '', pairingCode: '', pairingExpiresAt: '', lastSyncCursor: 0 }, state.telegram || {});
   var activeCardFilter = 'all';
   var activeCategoryFilter = 'all';
   var activeAccountFilter = 'all';
@@ -187,6 +191,118 @@
   var reportCardFilter = 'all';
   var reportCategoryFilter = 'all';
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function telegramBaseUrl() { return String(state.telegram.apiUrl || TELEGRAM_API_DEFAULT).replace(/\/+$/, ''); }
+  function telegramRequest(path, options) {
+    var config = options || {};
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, config.headers || {});
+    if (state.telegram.pairToken) headers.Authorization = 'Bearer ' + state.telegram.pairToken;
+    return fetch(telegramBaseUrl() + path, Object.assign({}, config, { headers: headers })).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (body) {
+        if (!response.ok) throw new Error(body.error || 'Não foi possível comunicar com a ponte do Telegram.');
+        return body;
+      });
+    });
+  }
+
+  function matchNamedItem(items, value) {
+    var target = String(value || '').trim().toLowerCase();
+    if (!target) return null;
+    return (items || []).slice().sort(function (a, b) { return String(b.name || '').length - String(a.name || '').length; }).find(function (item) {
+      var name = String(item.name || '').toLowerCase();
+      return name === target || name.indexOf(target) >= 0 || target.indexOf(name) >= 0;
+    }) || null;
+  }
+
+  function mapTelegramTransaction(remote) {
+    var card = matchNamedItem(state.cards, remote.cardName);
+    var account = matchNamedItem(state.accounts, remote.accountName);
+    var category = matchNamedItem(state.categories, remote.categoryName);
+    var isCard = remote.type === 'expense' && Boolean(remote.cardName || remote.isCard);
+    return {
+      id: uid('tx'),
+      sourceId: remote.externalId || remote.id || '',
+      date: remote.date || todayISO(),
+      description: remote.description || 'Lançamento via Telegram',
+      type: remote.type === 'income' ? 'income' : 'expense',
+      amount: Number(remote.amount || 0),
+      accountId: isCard ? '' : account ? account.id : (state.accounts[0] && state.accounts[0].id),
+      cardId: isCard ? (card ? card.id : '') : '',
+      billingMonth: isCard ? (remote.billingMonth || String(remote.date || todayISO()).slice(0, 7)) : '',
+      categoryId: category ? category.id : '',
+      status: 'paid',
+      tags: ['telegram', 'telegram-sync'],
+      note: 'Sincronizado a partir de uma mensagem do Telegram' + (remote.cardName && !card ? ' · Cartão informado: ' + remote.cardName : '')
+    };
+  }
+
+  function updateTelegramStatus(silent) {
+    if (!state.telegram.pairToken) return Promise.resolve();
+    return telegramRequest('/api/telegram/pairing/status').then(function (payload) {
+      var previous = state.telegram.status;
+      state.telegram.status = payload.status || previous;
+      state.telegram.chatId = payload.chatId ? String(payload.chatId) : state.telegram.chatId;
+      state.telegram.botUsername = payload.botUsername || state.telegram.botUsername;
+      if (state.telegram.status === 'linked' && previous !== 'linked' && !silent) showToast('Telegram conectado com sucesso.');
+      save();
+      if (previous !== state.telegram.status) render();
+    }).catch(function (error) {
+      if (!silent) showToast(error.message);
+    });
+  }
+
+  function syncTelegram(silent) {
+    if (telegramSyncing || !state.telegram.pairToken || state.telegram.status !== 'linked') return Promise.resolve();
+    telegramSyncing = true;
+    var cursor = encodeURIComponent(String(state.telegram.lastSyncCursor || 0));
+    return telegramRequest('/api/telegram/sync?after=' + cursor).then(function (payload) {
+      var imported = 0;
+      (payload.transactions || []).forEach(function (remote) {
+        var sourceId = remote.externalId || remote.id;
+        if (!sourceId || state.transactions.some(function (item) { return item.sourceId === sourceId; })) return;
+        var transaction = mapTelegramTransaction(remote);
+        if (!transaction.amount) return;
+        state.transactions.push(transaction);
+        imported += 1;
+      });
+      state.telegram.lastSyncCursor = Number(payload.cursor || state.telegram.lastSyncCursor || 0);
+      save();
+      if (imported) { render(); showToast(imported + (imported === 1 ? ' lançamento sincronizado.' : ' lançamentos sincronizados.')); }
+      else if (!silent) showToast('Nenhum lançamento novo no Telegram.');
+    }).catch(function (error) {
+      if (!silent) showToast(error.message);
+    }).finally(function () { telegramSyncing = false; });
+  }
+
+  function startTelegramPairing(form) {
+    var data = formData(form);
+    var apiUrl = String(data.apiUrl || TELEGRAM_API_DEFAULT).trim().replace(/\/+$/, '');
+    if (!apiUrl) { showToast('Informe a URL da ponte do Telegram.'); return; }
+    state.telegram.apiUrl = apiUrl;
+    state.telegram.botUsername = String(data.botUsername || '').trim();
+    state.telegram.status = 'not-configured';
+    state.telegram.pairToken = '';
+    state.telegram.pairingCode = '';
+    save();
+    telegramRequest('/api/telegram/pairing', { method: 'POST', body: JSON.stringify({}) }).then(function (payload) {
+      state.telegram.status = 'pending';
+      state.telegram.pairToken = payload.pairToken || '';
+      state.telegram.pairingCode = payload.pairingCode || '';
+      state.telegram.pairingExpiresAt = payload.expiresAt || '';
+      state.telegram.lastSyncCursor = 0;
+      save();
+      render();
+      showToast('Código criado. Envie /start ' + state.telegram.pairingCode + ' ao bot.');
+    }).catch(function (error) { showToast(error.message); });
+  }
+
+  function copyTelegramPairingCode() {
+    var code = state.telegram.pairingCode;
+    if (!code) return;
+    var command = '/start ' + code;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(command).then(function () { showToast('Comando copiado.'); });
+    else showToast(command);
+  }
 
   /* ==========================================================================
      THEME CONTROL (LIGHT & DARK WITH SMOOTH TRANSITION & ZERO FLASH)
@@ -2085,10 +2201,12 @@
   }
 
   function renderTelegram() {
-    var telegramState = state.telegram || { status: 'not-configured', botUsername: '', chatId: '' };
+    var telegramState = state.telegram || { status: 'not-configured', apiUrl: TELEGRAM_API_DEFAULT, botUsername: '', chatId: '', pairingCode: '' };
     var telegramTransactions = state.transactions.filter(function (item) { return (item.tags || []).indexOf('telegram') >= 0; }).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); }).slice(0, 6);
-    var configured = telegramState.status === 'configured';
-    return renderTopbar('Telegram', 'Transforme mensagens simples em lançamentos organizados') + '<div class="content"><div class="telegram-layout"><section class="card telegram-card telegram-intake"><div class="eyebrow">Entrada rápida</div><h2>Escreva como você fala</h2><p>O Todo Controle identifica valor, tipo, data, conta, cartão, categoria e mês da fatura.</p><form id="telegram-message-form"><div class="field"><label for="telegram-message">Mensagem financeira</label><textarea id="telegram-message" name="message" rows="4" placeholder="Ex.: gastei R$ 35,90 no mercado"></textarea></div><div class="telegram-examples"><button type="button" class="example-chip" data-telegram-example="gastei R$ 35,90 no mercado">gastei R$ 35,90 no mercado</button><button type="button" class="example-chip" data-telegram-example="recebi R$ 2.500,00 de salário">recebi R$ 2.500,00 de salário</button><button type="button" class="example-chip" data-telegram-example="compra R$ 89,90 no cartão Nubank, fatura outubro">compra no cartão + fatura</button></div><button class="button primary full" type="submit">' + svgIcon('plus', 16) + ' Registrar lançamento</button></form></section><section class="card telegram-card"><div class="section-heading"><div><div class="eyebrow">Ponte do bot</div><h2>Ponte segura do Telegram</h2><p>Esta configuração não pede nem armazena o token do bot no navegador.</p></div><span class="status ' + (configured ? 'positive' : '') + '">' + (configured ? 'configurado localmente' : 'interface pronta') + '</span></div><form id="telegram-config-form"><div class="field"><label for="telegram-bot-username">Usuário do bot</label><input id="telegram-bot-username" name="botUsername" value="' + esc(telegramState.botUsername) + '" placeholder="@todo_controle_bot" /></div><div class="field"><label for="telegram-chat-id">Chat ID vinculado</label><input id="telegram-chat-id" name="chatId" value="' + esc(telegramState.chatId) + '" placeholder="Será preenchido pelo pareamento" /></div><button class="button secondary full" type="submit">Salvar configuração local</button></form><div class="callout warning" style="margin-top:16px">O site publicado no GitHub Pages é estático. Para receber mensagens automaticamente no bot, ainda é necessário ligar um endpoint HTTPS seguro ao Telegram. Enquanto isso, esta tela já permite testar o mesmo formato de mensagem no app.</div></section></div><section class="card section"><div class="section-heading"><div><h2>Últimos lançamentos via Telegram</h2><p>Mensagens convertidas nesta instalação</p></div><button class="button small outline" data-view="transactions">Ver transações →</button></div><div class="transaction-list">' + (telegramTransactions.length ? telegramTransactions.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento criado pelo Telegram ainda. Use um dos exemplos acima.</div>') + '</div></section></div>';
+    var linked = telegramState.status === 'linked';
+    var pending = telegramState.status === 'pending' && telegramState.pairingCode;
+    var statusLabel = linked ? 'conectado' : pending ? 'aguardando pareamento' : 'não conectado';
+    return renderTopbar('Telegram', 'Transforme mensagens simples em lançamentos organizados') + '<div class="content"><div class="telegram-layout"><section class="card telegram-card telegram-intake"><div class="eyebrow">Entrada rápida</div><h2>Escreva como você fala</h2><p>O Todo Controle identifica valor, tipo, data, conta, cartão, categoria e mês da fatura.</p><form id="telegram-message-form"><div class="field"><label for="telegram-message">Mensagem financeira</label><textarea id="telegram-message" name="message" rows="4" placeholder="Ex.: gastei R$ 35,90 no mercado"></textarea></div><div class="telegram-examples"><button type="button" class="example-chip" data-telegram-example="gastei R$ 35,90 no mercado">gastei R$ 35,90 no mercado</button><button type="button" class="example-chip" data-telegram-example="recebi R$ 2.500,00 de salário">recebi R$ 2.500,00 de salário</button><button type="button" class="example-chip" data-telegram-example="compra R$ 89,90 no cartão Nubank, fatura outubro">compra no cartão + fatura</button></div><button class="button primary full" type="submit">' + svgIcon('plus', 16) + ' Registrar lançamento</button></form></section><section class="card telegram-card"><div class="section-heading"><div><div class="eyebrow">Conexão segura</div><h2>Conecte seu bot</h2><p>O token fica no servidor. Esta página usa apenas um código temporário de pareamento.</p></div><span class="status ' + (linked ? 'positive' : '') + '">' + statusLabel + '</span></div><form id="telegram-config-form"><div class="field"><label for="telegram-api-url">URL da ponte segura</label><input id="telegram-api-url" name="apiUrl" value="' + esc(telegramState.apiUrl || TELEGRAM_API_DEFAULT) + '" placeholder="https://sua-api.example.com" required /><small>O endereço do endpoint que recebe as mensagens do bot.</small></div><div class="field"><label for="telegram-bot-username">Usuário do bot</label><input id="telegram-bot-username" name="botUsername" value="' + esc(telegramState.botUsername) + '" placeholder="@todo_controle_bot" /></div><button class="button secondary full" type="submit">Gerar código de pareamento</button></form>' + (pending ? '<div class="callout" style="margin-top:16px"><strong>Seu código: <code>' + esc(telegramState.pairingCode) + '</code></strong><br />No Telegram, envie <code>/start ' + esc(telegramState.pairingCode) + '</code> ao bot.<br /><button class="button small outline" type="button" data-action="copy-telegram-code" style="margin-top:12px">Copiar comando</button></div>' : '') + (linked ? '<div class="callout positive" style="margin-top:16px">Chat vinculado: <strong>' + esc(telegramState.chatId || 'confirmado') + '</strong><br /><button class="button small outline" type="button" data-action="sync-telegram" style="margin-top:12px">Sincronizar agora</button></div>' : '<div class="callout warning" style="margin-top:16px">Depois do pareamento, cada mensagem de texto enviada ao bot será convertida em lançamento e aparecerá nas transações.</div>') + '</section></div><section class="card section"><div class="section-heading"><div><h2>Últimos lançamentos via Telegram</h2><p>Mensagens convertidas nesta instalação</p></div><button class="button small outline" data-view="transactions">Ver transações →</button></div><div class="transaction-list">' + (telegramTransactions.length ? telegramTransactions.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento criado pelo Telegram ainda. Faça o pareamento ou use um dos exemplos acima.</div>') + '</div></section></div>';
   }
 
   function renderMore() {
@@ -2149,6 +2267,8 @@
     var example = target.getAttribute('data-telegram-example');
     if (example) { var input = document.getElementById('telegram-message'); if (input) { input.value = example; input.focus(); } return; }
     var action = target.getAttribute('data-action');
+    if (action === 'copy-telegram-code') { copyTelegramPairingCode(); return; }
+    if (action === 'sync-telegram') { syncTelegram(false); return; }
     if (action === 'open-category') { modal = { type: 'category' }; render(); return; }
     if (action === 'reset-report-filters') { reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; render(); return; }
     if (action === 'export-filtered-csv') { exportFilteredCSV(); return; }
@@ -2182,9 +2302,7 @@
     }
     if (form.id === 'telegram-config-form') {
       event.preventDefault();
-      var telegramData = formData(form);
-      state.telegram = { status: telegramData.botUsername || telegramData.chatId ? 'configured' : 'not-configured', botUsername: telegramData.botUsername || '', chatId: telegramData.chatId || '' };
-      save(); render(); showToast('Configuração local do Telegram salva.'); return;
+      startTelegramPairing(form); return;
     }
     if (form.id === 'telegram-message-form') {
       event.preventDefault();
@@ -2253,4 +2371,11 @@
 
   applyTheme();
   render();
+  if (state.telegram.status === 'pending') updateTelegramStatus(true);
+  if (state.telegram.status === 'linked') syncTelegram(true);
+  window.setInterval(function () {
+    if (document.visibilityState === 'hidden') return;
+    if (state.telegram.status === 'pending') updateTelegramStatus(true);
+    if (state.telegram.status === 'linked') syncTelegram(true);
+  }, 15000);
 })();

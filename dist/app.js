@@ -13,6 +13,7 @@
   var toastTimer = null;
   var telegramSyncing = false;
   var TELEGRAM_API_DEFAULT = 'https://todo-controle-telegram.edsonjunioor32.workers.dev';
+  var THIRD_PARTY_CATEGORY_ID = 'cat-third-party';
   var theme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   var monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   var colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'];  /* ==========================================================================
@@ -203,7 +204,8 @@
         { id: 'cat-transport', name: 'Transporte & Mobilidade', parentId: '', color: '#f59e0b' },
         { id: 'cat-leisure', name: 'Lazer & Entretenimento', parentId: '', color: '#f43f5e' },
         { id: 'cat-health', name: 'Saúde & Bem-estar', parentId: '', color: '#8b5cf6' },
-        { id: 'cat-salary', name: 'Rendimentos & Salário', parentId: '', color: '#10b981' }
+        { id: 'cat-salary', name: 'Rendimentos & Salário', parentId: '', color: '#10b981' },
+        { id: THIRD_PARTY_CATEGORY_ID, name: 'Despesas de terceiros', parentId: '', color: '#94a3b8', excludeFromPersonalTotals: true, system: true }
       ],
       budgets: [
         { id: 'b-1', month: month, categoryId: 'cat-food', amount: 1400 },
@@ -303,6 +305,10 @@
   var reportCardFilter = 'all';
   var reportCategoryFilter = 'all';
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  if (!state.categories.some(function (category) { return category.id === THIRD_PARTY_CATEGORY_ID; })) {
+    state.categories.push({ id: THIRD_PARTY_CATEGORY_ID, name: 'Despesas de terceiros', parentId: '', color: '#94a3b8', excludeFromPersonalTotals: true, system: true });
+    save();
+  }
   if (state.telegram.apiUrl === 'https://todo-controle.gptparatres25.chatgpt.site' || state.telegram.apiUrl === 'https://todo-controle-telegram-backend.gptparatres25.chatgpt.site') {
     state.telegram.apiUrl = TELEGRAM_API_DEFAULT;
     save();
@@ -444,6 +450,12 @@
   function accountById(id) { return state.accounts.find(function (item) { return item.id === id; }); }
   function cardById(id) { return state.cards.find(function (item) { return item.id === id; }); }
   function monthTransactions(month) { return state.transactions.filter(function (item) { return String(item.date || '').slice(0, 7) === month; }); }
+  function isExcludedFromPersonalTotals(transaction) {
+    if (!transaction || transaction.type !== 'expense' || !transaction.cardId) return false;
+    var category = categoryById(transaction.categoryId);
+    return Boolean(transaction.excludedFromPersonalTotals || category && category.excludeFromPersonalTotals);
+  }
+  function isPersonalExpense(transaction) { return transaction.type === 'expense' && !isExcludedFromPersonalTotals(transaction); }
 
   function displayCategory(transaction) {
     if (transaction.categoryId) {
@@ -455,7 +467,7 @@
 
   function categoryExpense(month, categoryId) {
     return monthTransactions(month).reduce(function (total, item) {
-      if (item.type === 'expense' && item.categoryId === categoryId) {
+      if (isPersonalExpense(item) && item.categoryId === categoryId) {
         return total + Number(item.amount || 0);
       }
       return total;
@@ -489,10 +501,10 @@
   function summary(month) {
     var transactions = monthTransactions(month);
     var income = transactions.filter(function (item) { return item.type === 'income'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
-    var expense = transactions.filter(function (item) { return item.type === 'expense'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+    var expense = transactions.filter(isPersonalExpense).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var planned = state.budgets.filter(function (item) { return item.month === month; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var balance = state.accounts.reduce(function (sum, account) { return sum + accountBalance(account.id); }, 0);
-    var pending = transactions.filter(function (item) { return item.status === 'pending'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+    var pending = transactions.filter(function (item) { return item.status === 'pending' && (!item.cardId || !isExcludedFromPersonalTotals(item)); }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var openBills = state.bills.filter(function (item) { return String(item.dueDate || '').slice(0, 7) === month && item.status === 'open'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     return { income: income, expense: expense, planned: planned, balance: balance, monthly: income - expense, pending: pending, openBills: openBills, transactions: transactions };
   }
@@ -650,6 +662,7 @@
           '<div class="transaction-meta">' +
             '<span class="transaction-tag">' + esc(displayCategory(transaction)) + '</span>' +
             (owner ? '<span>· ' + esc(owner.name) + '</span>' : '') +
+            (isExcludedFromPersonalTotals(transaction) ? '<span class="transaction-tag" style="color:var(--amber)">Fora dos totais do titular</span>' : '') +
             (transaction.recurring ? '<span>· Recorrente</span>' : '') +
           '</div>' +
         '</div>' +
@@ -1319,7 +1332,8 @@
 
   function optionAccounts(value) {
     return state.accounts.map(function (account) {
-      return '<option value="' + account.id + '"' + selected(account.id === value) + '>' + esc(account.name) + '</option>';
+      var label = account.institution ? account.institution + ' · ' + account.name : account.name;
+      return '<option value="' + account.id + '"' + selected(account.id === value) + '>' + esc(label) + '</option>';
     }).join('');
   }
 
@@ -1363,7 +1377,7 @@
     };
     var type = modal.typeValue || item.type;
     var transfer = type === 'transfer';
-    var cardExpense = type === 'card-expense' || Boolean(item.cardId);
+    var cardExpense = type === 'card-expense' || (!modal.typeValue && Boolean(item.cardId));
 
     return modalShell(
       existing ? 'Editar Lançamento' : 'Novo Lançamento',
@@ -1911,7 +1925,7 @@
       return;
     }
     if (action === 'open-transaction') { quickMenu = false; openTransaction(target.getAttribute('data-type')); return; }
-    if (action === 'edit-transaction') { openTransaction('expense', target.getAttribute('data-id')); return; }
+    if (action === 'edit-transaction') { var editItem = state.transactions.find(function (item) { return item.id === target.getAttribute('data-id'); }); openTransaction(editItem && editItem.cardId ? 'card-expense' : editItem && editItem.type ? editItem.type : 'expense', target.getAttribute('data-id')); return; }
     if (action === 'delete-transaction') {
       var transactionId = target.getAttribute('data-id');
       if (window.confirm('Deseja excluir este lançamento definitivamente?')) {
@@ -2231,8 +2245,8 @@
   function summaryFromTransactions(transactions) {
     return {
       income: transactions.filter(function (item) { return item.type === 'income'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0),
-      expense: transactions.filter(function (item) { return item.type === 'expense'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0),
-      pending: transactions.filter(function (item) { return item.status === 'pending'; }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0)
+      expense: transactions.filter(isPersonalExpense).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0),
+      pending: transactions.filter(function (item) { return item.status === 'pending' && !isExcludedFromPersonalTotals(item); }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0)
     };
   }
   function reportTransactions() {
@@ -2241,12 +2255,12 @@
     return state.transactions.filter(function (item) {
       var date = String(item.date || '');
       var category = categoryById(item.categoryId);
-      return date >= start && date < end && (reportCardFilter === 'all' || item.cardId === reportCardFilter) && (reportCategoryFilter === 'all' || item.categoryId === reportCategoryFilter || category && category.parentId === reportCategoryFilter);
+      return date >= start && date < end && !isExcludedFromPersonalTotals(item) && (reportCardFilter === 'all' || item.cardId === reportCardFilter) && (reportCategoryFilter === 'all' || item.categoryId === reportCategoryFilter || category && category.parentId === reportCategoryFilter);
     });
   }
   function categorySummaryFromTransactions(transactions) {
     return state.categories.filter(function (category) { return !category.parentId; }).map(function (category) {
-      var amount = transactions.filter(function (item) { var child = categoryById(item.categoryId); return item.type === 'expense' && (item.categoryId === category.id || child && child.parentId === category.id); }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+      var amount = transactions.filter(function (item) { var child = categoryById(item.categoryId); return isPersonalExpense(item) && (item.categoryId === category.id || child && child.parentId === category.id); }).reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
       return { category: category, amount: amount };
     }).filter(function (row) { return row.amount > 0; }).sort(function (a, b) { return b.amount - a.amount; });
   }
@@ -2344,13 +2358,13 @@
 
   function renderTransactionModal() {
     var existing = modal.id ? state.transactions.find(function (item) { return item.id === modal.id; }) : null;
-    var item = existing || { type: modal.defaultType || 'expense', amount: '', description: '', date: todayISO(), accountId: state.accounts[0] && state.accounts[0].id, cardId: state.cards[0] && state.cards[0].id, categoryId: state.categories[0] && state.categories[0].id, status: 'paid', installments: 1, recurring: false, tags: [], note: '', billingMonth: state.selectedMonth };
+    var item = existing || { type: modal.defaultType || 'expense', amount: '', description: '', date: todayISO(), accountId: state.accounts[0] && state.accounts[0].id, cardId: '', categoryId: state.categories[0] && state.categories[0].id, status: 'paid', installments: 1, recurring: false, tags: [], note: '', billingMonth: state.selectedMonth, excludedFromPersonalTotals: false };
     var type = modal.typeValue || item.type;
-    var cardExpense = type === 'card-expense' || Boolean(item.cardId);
+    var cardExpense = type === 'card-expense' || (!modal.typeValue && Boolean(item.cardId));
     if (cardExpense && type === 'expense') type = 'card-expense';
     var transfer = type === 'transfer';
     var billingMonth = item.billingMonth || String(item.date || todayISO()).slice(0, 7);
-    return modalShell(existing ? 'Editar Lançamento' : 'Novo Lançamento', 'Informe os dados para registrar o movimento', '<form id="transaction-form" data-id="' + esc(existing ? existing.id : '') + '"><div class="form-grid"><div class="field"><label for="tx-type">Tipo de Operação</label><select id="tx-type" name="type"><option value="expense"' + selected(type === 'expense') + '>Despesa (Conta)</option><option value="income"' + selected(type === 'income') + '>Receita / Entrada</option><option value="card-expense"' + selected(type === 'card-expense') + '>Despesa no Cartão</option><option value="transfer"' + selected(transfer) + '>Transferência entre Contas</option></select></div><div class="field"><label for="tx-amount">Valor (R$)</label><input id="tx-amount" name="amount" inputmode="decimal" placeholder="0,00" value="' + esc(item.amount || '') + '" required /></div><div class="field wide"><label for="tx-description">Descrição do Lançamento</label><input id="tx-description" name="description" placeholder="Ex.: Supermercado, aluguel ou salário" value="' + esc(item.description || '') + '" required /></div><div class="field"><label for="tx-date">Data da compra</label><input id="tx-date" name="date" type="date" value="' + esc(item.date || todayISO()) + '" required /></div>' + (transfer ? '<div class="field"><label for="tx-from">Conta Origem</label><select id="tx-from" name="fromAccountId">' + optionAccounts(item.fromAccountId || item.accountId) + '</select></div><div class="field"><label for="tx-to">Conta Destino</label><select id="tx-to" name="toAccountId">' + optionAccounts(item.toAccountId) + '</select></div>' : cardExpense ? '<div class="field"><label for="tx-card">Cartão</label><select id="tx-card" name="cardId">' + optionCards(item.cardId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div><div class="field"><label for="tx-billing-month">Mês da fatura</label><select id="tx-billing-month" name="billingMonth">' + billingMonthOptions(billingMonth) + '</select><small>Mês em que a cobrança aparecerá na fatura.</small></div>' : '<div class="field"><label for="tx-account">Conta</label><select id="tx-account" name="accountId">' + optionAccounts(item.accountId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div>') + (!transfer ? '<div class="field"><label for="tx-status">Status</label><select id="tx-status" name="status"><option value="paid"' + selected(item.status !== 'pending') + '>Confirmado</option><option value="pending"' + selected(item.status === 'pending') + '>Pendente</option></select></div><div class="field"><label for="tx-installments">Parcelas</label><input id="tx-installments" name="installments" type="number" min="1" max="60" value="' + esc(item.installments || 1) + '" /><small>As parcelas avançam pelo mês da fatura.</small></div><div class="field wide"><label for="tx-tags">Tags</label><input id="tx-tags" name="tags" placeholder="fixa, trabalho, família" value="' + esc((item.tags || []).join(', ')) + '" /></div><div class="field wide"><label for="tx-note">Observação</label><textarea id="tx-note" name="note" placeholder="Anote algo importante">' + esc(item.note || '') + '</textarea></div><label class="check-row wide"><input type="checkbox" name="recurring"' + checked(item.recurring) + ' /> Marcar como recorrente</label>' : '') + '</div></form>', '<button class="button outline" data-action="close-modal">Cancelar</button><button class="button primary" form="transaction-form">Salvar Lançamento</button>');
+    return modalShell(existing ? 'Editar Lançamento' : 'Novo Lançamento', 'Informe os dados para registrar o movimento', '<form id="transaction-form" data-id="' + esc(existing ? existing.id : '') + '"><div class="form-grid"><div class="field"><label for="tx-type">Tipo de Operação</label><select id="tx-type" name="type"><option value="expense"' + selected(type === 'expense') + '>Despesa em Conta</option><option value="income"' + selected(type === 'income') + '>Receita / Entrada</option><option value="card-expense"' + selected(type === 'card-expense') + '>Despesa no Cartão</option><option value="transfer"' + selected(transfer) + '>Transferência entre Contas</option></select></div><div class="field"><label for="tx-amount">Valor (R$)</label><input id="tx-amount" name="amount" inputmode="decimal" placeholder="0,00" value="' + esc(item.amount || '') + '" required /></div><div class="field wide"><label for="tx-description">Descrição do Lançamento</label><input id="tx-description" name="description" placeholder="Ex.: Supermercado, aluguel ou salário" value="' + esc(item.description || '') + '" required /></div><div class="field"><label for="tx-date">Data da compra</label><input id="tx-date" name="date" type="date" value="' + esc(item.date || todayISO()) + '" required /></div>' + (transfer ? '<div class="field"><label for="tx-from">Conta Origem</label><select id="tx-from" name="fromAccountId">' + optionAccounts(item.fromAccountId || item.accountId) + '</select></div><div class="field"><label for="tx-to">Conta Destino</label><select id="tx-to" name="toAccountId">' + optionAccounts(item.toAccountId) + '</select></div>' : cardExpense ? '<div class="field"><label for="tx-card">Cartão</label><select id="tx-card" name="cardId">' + optionCards(item.cardId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div><div class="field"><label for="tx-billing-month">Mês da fatura</label><select id="tx-billing-month" name="billingMonth">' + billingMonthOptions(billingMonth) + '</select><small>Mês em que a cobrança aparecerá na fatura.</small></div><label class="check-row wide"><input type="checkbox" name="excludeFromPersonalTotals"' + checked(Boolean(item.excludedFromPersonalTotals || categoryById(item.categoryId) && categoryById(item.categoryId).excludeFromPersonalTotals)) + ' /> Excluir das despesas do titular (continua na fatura)</label>' : '<div class="field"><label for="tx-account">Banco / Conta</label><select id="tx-account" name="accountId">' + optionAccounts(item.accountId) + '</select></div><div class="field"><label for="tx-category">Categoria</label><select id="tx-category" name="categoryId">' + optionCategories(item.categoryId) + '</select></div>') + (!transfer ? '<div class="field"><label for="tx-status">Status</label><select id="tx-status" name="status"><option value="paid"' + selected(item.status !== 'pending') + '>Confirmado</option><option value="pending"' + selected(item.status === 'pending') + '>Pendente</option></select></div><div class="field"><label for="tx-installments">Parcelas</label><input id="tx-installments" name="installments" type="number" min="1" max="60" value="' + esc(item.installments || 1) + '" /><small>As parcelas avançam pelo mês da fatura.</small></div><div class="field wide"><label for="tx-tags">Tags</label><input id="tx-tags" name="tags" placeholder="fixa, trabalho, família" value="' + esc((item.tags || []).join(', ')) + '" /></div><div class="field wide"><label for="tx-note">Observação</label><textarea id="tx-note" name="note" placeholder="Anote algo importante">' + esc(item.note || '') + '</textarea></div><label class="check-row wide"><input type="checkbox" name="recurring"' + checked(item.recurring) + ' /> Marcar como recorrente</label>' : '') + '</div></form>', '<button class="button outline" data-action="close-modal">Cancelar</button><button class="button primary" form="transaction-form">Salvar Lançamento</button>');
   }
 
   function renderImportModal() {
@@ -2421,7 +2435,7 @@
       var messageData = formData(form);
       var parsed = parseTelegramMessage(messageData.message);
       if (!parsed.amount) { showToast('Informe um valor, por exemplo: R$ 35,90.'); return; }
-      state.transactions.push({ id: uid('tx'), date: parsed.date, description: parsed.description, type: parsed.type, amount: parsed.amount, accountId: parsed.accountId || '', cardId: parsed.cardId || '', billingMonth: parsed.cardId ? parsed.billingMonth : '', categoryId: parsed.categoryId || '', status: 'paid', tags: ['telegram'], note: 'Criado a partir de uma mensagem do Telegram' });
+      state.transactions.push({ id: uid('tx'), date: parsed.date, description: parsed.description, type: parsed.type, amount: parsed.amount, accountId: parsed.accountId || '', cardId: parsed.cardId || '', billingMonth: parsed.cardId ? parsed.billingMonth : '', categoryId: parsed.categoryId || '', excludedFromPersonalTotals: Boolean(parsed.cardId && categoryById(parsed.categoryId) && categoryById(parsed.categoryId).excludeFromPersonalTotals), status: 'paid', tags: ['telegram'], note: 'Criado a partir de uma mensagem do Telegram' });
       save(); render(); showToast('Lançamento criado a partir do Telegram.'); return;
     }
     if (form.id === 'transaction-form') {
@@ -2436,14 +2450,16 @@
       var installments = Math.max(1, Number(data.installments || 1));
       var purchaseDate = data.date || todayISO();
       var invoiceMonth = inputType === 'card-expense' ? (data.billingMonth || purchaseDate.slice(0, 7)) : '';
-      var base = { description: data.description, amount: amount, date: purchaseDate, status: data.status || 'paid', tags: data.tags ? data.tags.split(',').map(function (tag) { return tag.trim(); }).filter(Boolean) : [], note: data.note || '', recurring: Boolean(data.recurring), billingMonth: invoiceMonth };
+      var category = categoryById(data.categoryId);
+      var excludedFromPersonalTotals = inputType === 'card-expense' && (Boolean(data.excludeFromPersonalTotals) || Boolean(category && category.excludeFromPersonalTotals));
+      var base = { description: data.description, amount: amount, date: purchaseDate, status: data.status || 'paid', tags: data.tags ? data.tags.split(',').map(function (tag) { return tag.trim(); }).filter(Boolean) : [], note: data.note || '', recurring: Boolean(data.recurring), billingMonth: invoiceMonth, excludedFromPersonalTotals: excludedFromPersonalTotals };
       var id = form.getAttribute('data-id');
       if (id) {
         var existing = state.transactions.find(function (item) { return item.id === id; });
-        if (existing) Object.assign(existing, base, type === 'transfer' ? { type: 'transfer', fromAccountId: data.fromAccountId, toAccountId: data.toAccountId, accountId: '', cardId: '', categoryId: '', billingMonth: '' } : { type: type, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', fromAccountId: '', toAccountId: '' });
+        if (existing) Object.assign(existing, base, type === 'transfer' ? { type: 'transfer', fromAccountId: data.fromAccountId, toAccountId: data.toAccountId, accountId: '', cardId: '', categoryId: '', billingMonth: '', excludedFromPersonalTotals: false } : { type: type, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', excludedFromPersonalTotals: excludedFromPersonalTotals, fromAccountId: '', toAccountId: '' });
         showToast('Lançamento atualizado com sucesso.');
       } else {
-        for (var index = 0; index < installments; index += 1) state.transactions.push(Object.assign({}, base, { id: uid('tx'), type: type, date: addMonths(base.date, index), billingMonth: inputType === 'card-expense' ? addMonths(invoiceMonth + '-01', index).slice(0, 7) : '', installmentNumber: installments > 1 ? index + 1 : 0, installments: installments > 1 ? installments : 0, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', fromAccountId: data.fromAccountId || '', toAccountId: data.toAccountId || '' }));
+        for (var index = 0; index < installments; index += 1) state.transactions.push(Object.assign({}, base, { id: uid('tx'), type: type, date: addMonths(base.date, index), billingMonth: inputType === 'card-expense' ? addMonths(invoiceMonth + '-01', index).slice(0, 7) : '', installmentNumber: installments > 1 ? index + 1 : 0, installments: installments > 1 ? installments : 0, accountId: inputType === 'card-expense' ? '' : data.accountId || '', cardId: inputType === 'card-expense' ? data.cardId || '' : '', categoryId: data.categoryId || '', excludedFromPersonalTotals: excludedFromPersonalTotals, fromAccountId: data.fromAccountId || '', toAccountId: data.toAccountId || '' }));
         showToast('Lançamento registrado com sucesso.');
       }
       save(); closeAll(); return;
@@ -2463,6 +2479,30 @@
       save(); closeAll(); showToast(count + ' lançamentos importados com sucesso.'); return;
     }
     legacyHandleSubmit(event);
+  }
+
+  /* ==========================================================================
+     INIT
+     ========================================================================== */
+  function renderMore() {
+    var roots = state.categories.filter(function (category) { return !category.parentId; });
+    return renderTopbar('Configurações & Dados', 'Gerencie seus dados locais, backups e preferências') +
+      '<div class="content">' +
+        '<div class="grid two-column">' +
+          '<section class="card section"><div class="section-heading"><div><h2>Backup e Portabilidade</h2><p>Seus dados permanecem sob o seu total controle</p></div></div>' +
+            '<div class="grid" style="gap:12px"><button class="button secondary full" data-action="export-json">Exportar Backup Completo (JSON)</button><button class="button outline full" data-action="open-import">Importar Fatura ou Extrato</button><button class="button danger full" data-action="reset-data">Restaurar Dados Padrão</button></div>' +
+            '<div class="callout" style="margin-top:18px">O app salva dados neste dispositivo usando armazenamento local. Exporte um backup antes de trocar de navegador ou computador.</div>' +
+          '</section>' +
+          '<section class="card section"><div class="section-heading"><div><h2>Integrações</h2><p>Recursos conectados ao seu fluxo</p></div></div>' +
+            '<div class="budget-list"><div class="budget-row"><div class="budget-row-top"><strong>Telegram</strong><span class="positive">interface pronta</span></div><div class="budget-meta"><span>Crie lançamentos por mensagens simples</span><button class="button small outline" data-view="telegram">Abrir →</button></div></div>' +
+            '<div class="budget-row"><div class="budget-row-top"><strong>Open Finance</strong><span class="status">em preparação</span></div><div class="budget-meta"><span>Importe arquivos sem compartilhar senhas</span></div></div>' +
+            '<div class="budget-row"><div class="budget-row-top"><strong>Privacidade</strong><span class="positive">local-first</span></div><div class="budget-meta"><span>Nenhuma senha bancária é solicitada</span></div></div></div>' +
+          '</section>' +
+        '</div>' +
+        '<section class="card section"><div class="section-heading"><div><h2>Categorias e subcategorias</h2><p>Personalize sua organização financeira e os filtros dos relatórios.</p></div><button class="button primary small" data-action="open-category">' + svgIcon('plus', 14) + ' Nova Categoria</button></div>' +
+          '<div class="category-tree">' + roots.map(function (root) { var children = state.categories.filter(function (category) { return category.parentId === root.id; }); return '<div class="category-tree-item"><div class="category-row"><span class="legend-dot" style="background:' + esc(root.color || '#6366f1') + '"></span><strong>' + esc(root.name) + '</strong><span class="category-count">' + children.length + ' subcategorias</span></div>' + children.map(function (child) { return '<div class="category-row category-child"><span class="legend-dot" style="background:' + esc(child.color || root.color || '#6366f1') + '"></span><span>' + esc(child.name) + '</span><span class="category-count">subcategoria</span></div>'; }).join('') + '</div>'; }).join('') + '</div>' +
+        '</section>' +
+      '</div>';
   }
 
   /* ==========================================================================

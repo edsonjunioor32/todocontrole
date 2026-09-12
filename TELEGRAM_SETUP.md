@@ -22,3 +22,18 @@ Depois de publicar o Worker, registre o webhook usando a URL `/telegram/webhook`
 5. O aplicativo sincroniza os lançamentos após o pareamento.
 
 O backend grava o identificador do update do Telegram e ignora reenvios duplicados. O cartão, a conta e a categoria são resolvidos no dispositivo a partir dos nomes informados na mensagem.
+
+## Backend isolado no Cloudflare
+
+O backend financeiro foi transferido para um projeto Cloudflare separado do Telegram das vagas. Não compartilhe com o serviço de vagas o bot, o webhook, o token ou o banco.
+
+URL do backend:
+
+https://todo-controle-telegram-backend.gptparatres25.chatgpt.site
+
+Webhook:
+
+https://todo-controle-telegram-backend.gptparatres25.chatgpt.site/telegram/webhook
+
+Use um segundo bot criado no BotFather e configure os segredos no novo projeto Cloudflare.
+

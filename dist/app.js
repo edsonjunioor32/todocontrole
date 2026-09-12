@@ -368,7 +368,7 @@
         billingMonth: isCard ? addMonths(invoiceMonth + '-01', index).slice(0, 7) : '',
         categoryId: category ? category.id : '',
         installmentNumber: installments > 1 ? index + 1 : 0,
-        installments: installments > 1 ? installments : 0,
+        installments: installments,
         status: 'paid',
         tags: ['telegram', 'telegram-sync'],
         note: 'Sincronizado a partir de uma mensagem do Telegram' + (installments > 1 ? ' · Compra parcelada em ' + installments + ' vezes' : '') + (remote.cardName && !card ? ' · Cartão informado: ' + remote.cardName : '')
@@ -395,21 +395,43 @@
   function syncTelegram(silent) {
     if (telegramSyncing || !state.telegram.pairToken || state.telegram.status !== 'linked') return Promise.resolve();
     telegramSyncing = true;
-    var cursor = encodeURIComponent(String(state.telegram.lastSyncCursor || 0));
+    var lastSyncCursor = Number(state.telegram.lastSyncCursor || 0);
+    var syncAfter = state.telegram.installmentRepairDone ? lastSyncCursor : Math.max(0, lastSyncCursor - 100);
+    var cursor = encodeURIComponent(String(syncAfter));
     return telegramRequest('/api/telegram/sync?after=' + cursor).then(function (payload) {
       var imported = 0;
+      var updated = 0;
       (payload.transactions || []).forEach(function (remote) {
         var transactions = mapTelegramTransactions(remote);
+        var remoteSourceId = String(remote.externalId || remote.id || '');
+        var legacyTransaction = state.transactions.find(function (item) {
+          return item.sourceId === remoteSourceId && ((item.tags || []).indexOf('telegram') >= 0 || String(item.note || '').toLowerCase().indexOf('telegram') >= 0);
+        });
+        if (transactions.length > 1 && legacyTransaction) {
+          state.transactions = state.transactions.filter(function (item) { return item !== legacyTransaction; });
+        }
         transactions.forEach(function (transaction) {
-          if (!transaction.sourceId || state.transactions.some(function (item) { return item.sourceId === transaction.sourceId; })) return;
+          if (!transaction.sourceId) return;
           if (!transaction.amount) return;
+          var existingIndex = state.transactions.findIndex(function (item) { return item.sourceId === transaction.sourceId; });
+          if (existingIndex >= 0) {
+            var existing = state.transactions[existingIndex];
+            var isTelegramOrigin = (existing.tags || []).indexOf('telegram') >= 0 || String(existing.note || '').toLowerCase().indexOf('telegram') >= 0;
+            if (isTelegramOrigin) {
+              var existingId = existing.id;
+              state.transactions[existingIndex] = Object.assign({}, existing, transaction, { id: existingId });
+              updated += 1;
+            }
+            return;
+          }
           state.transactions.push(transaction);
           imported += 1;
         });
       });
       state.telegram.lastSyncCursor = Number(payload.cursor || state.telegram.lastSyncCursor || 0);
+      state.telegram.installmentRepairDone = true;
       save();
-      if (imported) { render(); showToast(imported + (imported === 1 ? ' lançamento sincronizado.' : ' lançamentos sincronizados.')); }
+      if (imported || updated) { render(); showToast((imported + updated) + (imported + updated === 1 ? ' lançamento sincronizado.' : ' lançamentos sincronizados.')); }
       else if (!silent) showToast('Nenhum lançamento novo no Telegram.');
     }).catch(function (error) {
       if (!silent) showToast(error.message);
@@ -2476,9 +2498,9 @@
       var messageData = formData(form);
       var parsed = parseTelegramMessage(messageData.message);
       if (!parsed.amount) { showToast('Informe um valor, por exemplo: R$ 35,90.'); return; }
-      var telegramInstallments = parsed.cardId ? Math.min(60, Math.max(1, Number(parsed.installments || 1))) : 1;
+      var telegramInstallments = parsed.isCard ? Math.min(60, Math.max(1, Number(parsed.installments || 1))) : 1;
       var telegramExcluded = Boolean(parsed.cardId && categoryById(parsed.categoryId) && categoryById(parsed.categoryId).excludeFromPersonalTotals);
-      for (var telegramIndex = 0; telegramIndex < telegramInstallments; telegramIndex += 1) state.transactions.push({ id: uid('tx'), date: addMonths(parsed.date, telegramIndex), description: parsed.description, type: parsed.type, amount: splitInstallmentAmount(parsed.amount, telegramInstallments, telegramIndex), originalAmount: parsed.amount, accountId: parsed.accountId || '', cardId: parsed.cardId || '', billingMonth: parsed.cardId ? addMonths(parsed.billingMonth + '-01', telegramIndex).slice(0, 7) : '', categoryId: parsed.categoryId || '', excludedFromPersonalTotals: telegramExcluded, installmentNumber: telegramInstallments > 1 ? telegramIndex + 1 : 0, installments: telegramInstallments > 1 ? telegramInstallments : 0, status: 'paid', tags: ['telegram'], note: 'Criado a partir de uma mensagem do Telegram' + (telegramInstallments > 1 ? ' · Compra parcelada em ' + telegramInstallments + ' vezes' : '') });
+      for (var telegramIndex = 0; telegramIndex < telegramInstallments; telegramIndex += 1) state.transactions.push({ id: uid('tx'), date: addMonths(parsed.date, telegramIndex), description: parsed.description, type: parsed.type, amount: splitInstallmentAmount(parsed.amount, telegramInstallments, telegramIndex), originalAmount: parsed.amount, accountId: parsed.isCard ? '' : (parsed.accountId || ''), cardId: parsed.isCard ? (parsed.cardId || (state.cards[0] && state.cards[0].id) || '') : '', billingMonth: parsed.isCard ? addMonths(parsed.billingMonth + '-01', telegramIndex).slice(0, 7) : '', categoryId: parsed.categoryId || '', excludedFromPersonalTotals: telegramExcluded, installmentNumber: telegramInstallments > 1 ? telegramIndex + 1 : 0, installments: telegramInstallments, status: 'paid', tags: ['telegram'], note: 'Criado a partir de uma mensagem do Telegram' + (telegramInstallments > 1 ? ' · Compra parcelada em ' + telegramInstallments + ' vezes' : '') });
       save(); render(); showToast('Lançamento criado a partir do Telegram.'); return;
     }
     if (form.id === 'transaction-form') {

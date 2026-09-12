@@ -12,7 +12,7 @@
   var importRows = [];
   var toastTimer = null;
   var telegramSyncing = false;
-  var TELEGRAM_API_DEFAULT = 'https://todo-controle.gptparatres25.chatgpt.site';
+  var TELEGRAM_API_DEFAULT = 'https://todo-controle-telegram-backend.gptparatres25.chatgpt.site';
   var theme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   var monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   var colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'];  /* ==========================================================================
@@ -303,6 +303,10 @@
   var reportCardFilter = 'all';
   var reportCategoryFilter = 'all';
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  if (state.telegram.apiUrl === 'https://todo-controle.gptparatres25.chatgpt.site') {
+    state.telegram.apiUrl = TELEGRAM_API_DEFAULT;
+    save();
+  }
 
   function telegramBaseUrl() { return String(state.telegram.apiUrl || TELEGRAM_API_DEFAULT).replace(/\/+$/, ''); }
   function telegramRequest(path, options) {
@@ -2487,3 +2491,4 @@
     if (state.telegram.status === 'linked') syncTelegram(true);
   }, 15000);
 })();
+

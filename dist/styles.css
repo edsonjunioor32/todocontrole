@@ -1526,6 +1526,12 @@ input[type="checkbox"] {
   display: none;
 }
 
+.mobile-more-menu,
+.mobile-more-backdrop,
+.mobile-more-toggle {
+  display: none;
+}
+
 .menu-button {
   display: none;
 }
@@ -1823,7 +1829,7 @@ input[type="checkbox"] {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     padding: 8px 4px max(8px, env(safe-area-inset-bottom));
     background: var(--panel);
     border-top: 1px solid var(--line);
@@ -1852,6 +1858,99 @@ input[type="checkbox"] {
   .mobile-nav .nav-icon svg {
     width: 20px;
     height: 20px;
+  }
+
+  .mobile-more-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 7, 14, 0.42);
+  }
+
+  .mobile-more-menu {
+    display: none;
+    position: fixed;
+    z-index: 50;
+    right: 12px;
+    bottom: 78px;
+    left: 12px;
+    padding: 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 20px;
+    background: var(--panel);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mobile-more-menu.open {
+    display: block;
+    animation: mobile-menu-in 0.18s ease-out both;
+  }
+
+  .mobile-more-heading {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-more-heading strong {
+    font-size: 15px;
+  }
+
+  .mobile-more-heading span {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .mobile-more-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-more-item,
+  .mobile-more-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 58px;
+    border-radius: 14px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .mobile-more-item {
+    flex-direction: column;
+    padding: 9px 6px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+  }
+
+  .mobile-more-item.active,
+  .mobile-more-toggle.active {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-light);
+  }
+
+  .mobile-more-toggle {
+    flex-direction: column;
+    padding: 4px 0;
+  }
+
+  .mobile-more-toggle .nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  @keyframes mobile-menu-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   .hero-icon {

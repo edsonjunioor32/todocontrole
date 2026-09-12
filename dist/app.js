@@ -9,6 +9,7 @@
   var searchTerm = '';
   var modal = null;
   var quickMenu = false;
+  var mobileMenuOpen = false;
   var importRows = [];
   var toastTimer = null;
   var telegramSyncing = false;
@@ -605,13 +606,31 @@
 
   function renderMobileNav() {
     var items = navItems().slice(0, 5);
-    return '<nav class="mobile-nav">' + items.map(function (item) {
+    var extraItems = navItems().slice(5);
+    var extraActive = extraItems.some(function (item) { return activeView === item[0]; });
+    return (mobileMenuOpen ? '<button class="mobile-more-backdrop" data-action="toggle-mobile-more" aria-label="Fechar menu de outras áreas"></button>' : '') +
+      '<div class="mobile-more-menu' + (mobileMenuOpen ? ' open' : '') + '" aria-hidden="' + (!mobileMenuOpen) + '">' +
+        '<div class="mobile-more-heading"><strong>Outras áreas</strong><span>Acesso completo do aplicativo</span></div>' +
+        '<div class="mobile-more-grid">' + extraItems.map(function (item) {
+          var extraItemActive = activeView === item[0] ? ' active' : '';
+          return '<button class="mobile-more-item' + extraItemActive + '" data-view="' + item[0] + '">' +
+            '<span class="nav-icon">' + svgIcon(item[1], 20) + '</span>' +
+            '<span>' + item[2] + '</span>' +
+          '</button>';
+        }).join('') + '</div>' +
+      '</div>' +
+      '<nav class="mobile-nav">' + items.map(function (item) {
       var active = activeView === item[0] ? ' active' : '';
       return '<button class="' + active + '" data-view="' + item[0] + '">' +
         '<span class="nav-icon">' + svgIcon(item[1], 20) + '</span>' +
         '<span>' + item[2].split(' ')[0] + '</span>' +
       '</button>';
-    }).join('') + '</nav>';
+    }).join('') +
+      '<button class="' + (extraActive ? 'active ' : '') + 'mobile-more-toggle" data-action="toggle-mobile-more" aria-expanded="' + mobileMenuOpen + '" aria-label="Abrir outras áreas">' +
+        '<span class="nav-icon">' + svgIcon('more', 20) + '</span>' +
+        '<span>Mais</span>' +
+      '</button>' +
+      '</nav>';
   }
 
   function monthOptions() {
@@ -2456,13 +2475,14 @@
     var example = target.getAttribute('data-telegram-example');
     if (example) { var input = document.getElementById('telegram-message'); if (input) { input.value = example; input.focus(); } return; }
     var action = target.getAttribute('data-action');
+    if (action === 'toggle-mobile-more') { mobileMenuOpen = !mobileMenuOpen; render(); return; }
     if (action === 'copy-telegram-code') { copyTelegramPairingCode(); return; }
     if (action === 'sync-telegram') { syncTelegram(false); return; }
     if (action === 'open-category') { modal = { type: 'category' }; render(); return; }
     if (action === 'reset-report-filters') { reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; render(); return; }
     if (action === 'export-filtered-csv') { exportFilteredCSV(); return; }
     var view = target.getAttribute('data-view');
-    if (view) { activeCardFilter = 'all'; activeCategoryFilter = 'all'; activeAccountFilter = 'all'; reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; }
+    if (view) { mobileMenuOpen = false; activeCardFilter = 'all'; activeCategoryFilter = 'all'; activeAccountFilter = 'all'; reportStartDate = ''; reportEndDate = ''; reportCardFilter = 'all'; reportCategoryFilter = 'all'; }
     legacyHandleClick(event);
   }
 

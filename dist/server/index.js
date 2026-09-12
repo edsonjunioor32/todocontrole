@@ -76,6 +76,9 @@ function parseTelegramMessage(message) {
   const amountMatch = textValue.match(/r\$\s*([\d.]+(?:,\d{1,2})?)/i) || textValue.match(/(?:^|\s)(\d+(?:[.,]\d{1,2})?)(?:\s|$)/);
   const amount = parseMoney(amountMatch ? amountMatch[1] : '0');
   const type = /\b(recebi|receita|salario|entrada|ganhei|venda|deposito)\b/i.test(normalized) ? 'income' : 'expense';
+  const installmentMatch = normalized.match(/\b(\d{1,2})\s*x\b/) || normalized.match(/\b(\d{1,2})\s*(?:parcelas?|vezes)\b/);
+  const installmentContext = /\b(?:parcela(?:s)?|parcelad[oa]|dividid[oa]|dividir)\b/i.test(normalized) || Boolean(installmentMatch);
+  const installments = installmentContext ? Math.min(60, Math.max(1, Number(installmentMatch ? installmentMatch[1] : 1))) : 1;
   let date = todayISO();
   const dateMatch = normalized.match(/\b(?:dia|em)\s+(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/);
   if (dateMatch) {
@@ -85,30 +88,37 @@ function parseTelegramMessage(message) {
   const monthIndex = MONTHS.findIndex((month) => normalized.includes(month));
   const yearMatch = normalized.match(/\b(20\d{2})\b/);
   const billingMonth = monthIndex >= 0 ? (yearMatch ? yearMatch[1] : todayISO().slice(0, 4)) + '-' + pad(monthIndex + 1) : date.slice(0, 7);
-  const cardName = extractHint(textValue, /cart[aã]o\s+([^,;]+?)(?=\s+fatura\b|\s+vencimento\b|[,;]|$)/i);
+  const cardName = extractHint(textValue, /cart[aã]o\s+([^,;]+?)(?=\s+(?:fatura|vencimento|categoria|conta|banco)\b|\s+\d{1,2}\s*x\b|\s+em\s+\d{1,2}\s*(?:x|parcelas?|vezes)\b|[,;]|$)/i);
   const accountName = extractHint(textValue, /(?:conta|banco)\s+([^,;]+?)(?=\s+cart[aã]o\b|\s+categoria\b|[,;]|$)/i);
   const categoryName = extractHint(textValue, /categoria\s+([^,;]+?)(?=\s+cart[aã]o\b|\s+fatura\b|[,;]|$)/i);
   const description = textValue
     .replace(/r\$\s*[\d.]+(?:,\d{1,2})?/ig, '')
-    .replace(/(?:^|\s)(?:gastei|paguei|compra|despesa|recebi|receita|ganhei|entrada|venda|deposito)(?=\s|$)/ig, '')
+    .replace(/(?:^|\s)(?:eu|meu|minha|gastei|paguei|compra|despesa|recebi|receita|ganhei|entrada|venda|deposito)(?=\s|$)/ig, '')
     .replace(/\b(?:dia|em)\s+\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?/ig, '')
     .replace(/\b(?:fatura|vencimento|mes|mês)\s+(?:de\s+)?[a-zç]+(?:\s+20\d{2})?/ig, '')
+    .replace(/\b(?:em\s+)?\d{1,2}\s*x\b/ig, '')
+    .replace(/\b(?:em\s+)?\d{1,2}\s*(?:parcelas?|vezes)\b/ig, '')
+    .replace(/\b(?:parcela(?:s)?|parcelad[oa]|dividid[oa]|dividir)\b/ig, '')
+    .replace(/(?:^|\s)\d+(?:[.,]\d{1,2})?(?=\s|$)/, '')
     .replace(/\bcart[aã]o\s+[^,;]+/ig, '')
     .replace(/\b(?:conta|banco|categoria)\s+[^,;]+/ig, '')
+    .replace(/\b(?:no|na|num|numa|em|de)\b/ig, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/^\s*(?:no|na|em|de)\s+/i, '')
+    .replace(/^\s*(?:no|na|num|numa|em|de)\s+/i, '')
+    .replace(/\s+(?:no|na|num|numa|em|de)\s*$/i, '')
     .replace(/[,-]+$/, '')
     .trim();
   return {
     amount,
-    type: cardName || /\bcart[aã]o\b|\bfatura\b/i.test(normalized) ? 'expense' : type,
+    type: cardName || installmentContext || /\bcart[aã]o\b|\bfatura\b/i.test(normalized) ? 'expense' : type,
     date,
     description: description || 'Lançamento via Telegram',
     cardName,
     accountName,
     categoryName,
     billingMonth,
-    isCard: Boolean(cardName || /\bcart[aã]o\b|\bfatura\b/i.test(normalized))
+    installments,
+    isCard: Boolean(cardName || installmentContext || /\bcart[aã]o\b|\bfatura\b/i.test(normalized))
   };
 }
 
@@ -158,11 +168,14 @@ async function syncTransactions(request, env, url) {
   const auth = await authFromRequest(request, env.DB);
   if (!auth || !auth.connection) return json({ error: 'Telegram ainda não foi pareado.' }, 401, request, env);
   const after = Math.max(0, Number(url.searchParams.get('after') || 0));
-  const result = await env.DB.prepare('SELECT id, update_id, amount, type, date, description, card_name, account_name, category_name, billing_month, created_at FROM telegram_transactions WHERE chat_id = ? AND update_id > ? ORDER BY update_id ASC LIMIT 100')
+  const result = await env.DB.prepare('SELECT id, update_id, raw_text, amount, type, date, description, card_name, account_name, category_name, billing_month, created_at FROM telegram_transactions WHERE chat_id = ? AND update_id > ? ORDER BY update_id ASC LIMIT 100')
     .bind(String(auth.connection.chat_id), after).all();
   const rows = result.results || [];
   const cursor = rows.length ? Number(rows[rows.length - 1].update_id) : after;
-  return json({ cursor, transactions: rows.map((row) => ({ id: row.id, externalId: row.id, amount: row.amount, type: row.type, date: row.date, description: row.description, cardName: row.card_name || '', accountName: row.account_name || '', categoryName: row.category_name || '', billingMonth: row.billing_month || '', isCard: Boolean(row.card_name || row.billing_month), createdAt: row.created_at })) }, 200, request, env);
+  return json({ cursor, transactions: rows.map((row) => {
+    const parsed = row.raw_text ? parseTelegramMessage(row.raw_text) : null;
+    return { id: row.id, externalId: row.id, amount: row.amount, type: row.type, date: row.date, description: row.description, cardName: row.card_name || '', accountName: row.account_name || '', categoryName: row.category_name || '', billingMonth: row.billing_month || '', installments: parsed ? parsed.installments : 1, isCard: Boolean(row.card_name || row.billing_month || parsed && parsed.isCard), createdAt: row.created_at };
+  }) }, 200, request, env);
 }
 
 async function handleWebhook(request, env) {
@@ -205,7 +218,7 @@ async function handleWebhook(request, env) {
     .bind(externalId, chatId, updateId, Number(message.message_id || 0), input, parsed.amount, parsed.type, parsed.date, parsed.description, parsed.cardName, parsed.accountName, parsed.categoryName, parsed.billingMonth, createdAt).run();
   if (inserted.meta && inserted.meta.changes) {
     await env.DB.prepare('UPDATE telegram_connections SET last_update_id = ? WHERE chat_id = ?').bind(updateId, chatId).run();
-    await sendTelegramMessage(env, chatId, 'Lançamento registrado: ' + parsed.description + ' · R$ ' + parsed.amount.toFixed(2).replace('.', ','));
+    await sendTelegramMessage(env, chatId, 'Lançamento registrado: ' + parsed.description + ' · R$ ' + parsed.amount.toFixed(2).replace('.', ',') + (parsed.installments > 1 ? ' · ' + parsed.installments + ' parcelas' : ''));
   }
   return text('OK');
 }
@@ -222,3 +235,4 @@ export default {
     return json({ error: 'Not found' }, 404, request, env);
   }
 };
+

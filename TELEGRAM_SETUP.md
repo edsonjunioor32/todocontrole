@@ -11,7 +11,25 @@ Configure no ambiente do Worker:
 - `TELEGRAM_BOT_USERNAME`: usuário público do bot, sem o `@` (opcional).
 - `APP_ORIGINS`: `https://edsonjunioor32.github.io,http://localhost:4173`.
 
-Depois de publicar o Worker, registre o webhook usando a URL `/telegram/webhook` e o mesmo `TELEGRAM_WEBHOOK_SECRET` no método `setWebhook` da Bot API.
+No Cloudflare, abra Workers & Pages, selecione `todo-controle-telegram`, entre em Settings > Variables and Secrets e adicione os três segredos. `APP_ORIGINS` já está configurado como variável comum. Não altere o Worker `sr-vagas-bot`.
+
+## Passos para ativar o Telegram
+
+1. No Telegram, abra o contato oficial `@BotFather`.
+2. Use `/newbot` e crie um bot exclusivo para o Todo Controle. Não use o bot das vagas.
+3. Copie o token fornecido pelo BotFather e salve-o no segredo `TELEGRAM_BOT_TOKEN` do Worker.
+4. Gere um segredo novo para `TELEGRAM_WEBHOOK_SECRET`. Use letras, números, `_` ou `-` e não publique esse valor.
+5. Opcionalmente, informe o usuário do bot, sem `@`, em `TELEGRAM_BOT_USERNAME`.
+6. Registre o webhook na Bot API apontando para:
+
+   `https://todo-controle-telegram.edsonjunioor32.workers.dev/telegram/webhook`
+
+   No método `setWebhook`, envie essa URL e o mesmo valor usado em `TELEGRAM_WEBHOOK_SECRET` como `secret_token`.
+7. Abra o Todo Controle, entre em Telegram e mantenha a URL padrão da ponte.
+8. Clique em Gerar código de pareamento e envie `/start CÓDIGO` para o novo bot.
+9. Depois que aparecer como conectado, envie uma mensagem de teste, por exemplo: `gastei R$ 35,90 no mercado`.
+
+O Telegram não precisa conhecer o token do bot. O token fica somente no Worker da sua conta Cloudflare.
 
 ## Pareamento
 
@@ -35,5 +53,5 @@ Webhook:
 
 https://todo-controle-telegram.edsonjunioor32.workers.dev/telegram/webhook
 
-Esse Worker e o banco D1 pertencem a sua conta Cloudflare e permanecem separados do servico de vagas. Use um segundo bot criado no BotFather e configure os segredos nele.
+Esse Worker e o banco D1 pertencem à sua conta Cloudflare e permanecem separados do serviço de vagas. Use um segundo bot criado no BotFather e configure os segredos nele.
 

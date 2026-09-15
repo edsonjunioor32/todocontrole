@@ -679,9 +679,12 @@
           '<span>' + esc(account.institution || account.type || 'Conta') + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="row-value">' +
-        '<strong>' + money(accountBalance(account.id)) + '</strong>' +
-        '<span style="display:flex; align-items:center; gap:3px; justify-content:flex-end">saldo disponível <span class="analytical-hint" style="font-size:10px">Extrato ↗</span></span>' +
+      '<div style="display:flex; align-items:center; gap:10px">' +
+        '<div class="row-value">' +
+          '<strong>' + money(accountBalance(account.id)) + '</strong>' +
+          '<span style="display:flex; align-items:center; gap:3px; justify-content:flex-end">saldo disponível <span class="analytical-hint" style="font-size:10px">Extrato ↗</span></span>' +
+        '</div>' +
+        '<button class="icon-button danger" data-action="delete-account" data-id="' + account.id + '" title="Excluir conta ' + esc(account.name) + '" aria-label="Excluir conta">' + svgIcon('trash', 15) + '</button>' +
       '</div>' +
     '</div>';
   }
@@ -706,9 +709,9 @@
       '<div class="progress ' + (percentage > 85 ? 'red' : 'indigo') + '" style="margin-top:14px">' +
         '<span style="width:' + percentage + '%"></span>' +
       '</div>' +
-      '<div class="budget-meta" style="margin-top:8px">' +
-        '<span>Limite: ' + money(card.limit) + '</span>' +
-        '<span>' + Math.round(percentage) + '% utilizado</span>' +
+      '<div class="budget-meta" style="margin-top:8px; display:flex; align-items:center; justify-content:space-between">' +
+        '<span>Limite: ' + money(card.limit) + ' (' + Math.round(percentage) + '% usado)</span>' +
+        '<button class="icon-button danger" data-action="delete-card" data-id="' + card.id + '" title="Excluir cartão ' + esc(card.name) + '" aria-label="Excluir cartão">' + svgIcon('trash', 14) + '</button>' +
       '</div>' +
     '</div>';
   }
@@ -1168,9 +1171,12 @@
                   '<div class="progress ' + (pct > 80 ? 'red' : 'indigo') + '" style="margin-top:12px">' +
                     '<span style="width:' + pct + '%"></span>' +
                   '</div>' +
-                  '<div class="budget-meta" style="margin-top:8px">' +
+                  '<div class="budget-meta" style="margin-top:8px; display:flex; align-items:center; justify-content:space-between">' +
                     '<span>Limite: ' + money(card.limit) + ' (' + Math.round(pct) + '% usado)</span>' +
-                    '<button class="button small secondary" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>' +
+                    '<div style="display:flex; align-items:center; gap:8px">' +
+                      '<button class="button small secondary" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>' +
+                      '<button class="icon-button danger" data-action="delete-card" data-id="' + card.id + '" title="Excluir cartão" aria-label="Excluir cartão">' + svgIcon('trash', 14) + '</button>' +
+                    '</div>' +
                   '</div>' +
                 '</div>';
               }).join('') +
@@ -1839,8 +1845,9 @@
             '<span>Saídas: <strong class="negative">- ' + money(accExpense) + '</strong></span>' +
           '</div>' +
           '<div class="analytics-account-actions">' +
-            '<button class="button small secondary" data-action="prompt-edit-balance" data-id="' + account.id + '">Editar Saldo Inicial</button>' +
-            '<button class="button small outline" data-analytics="account" data-id="' + account.id + '">Ver Extrato Analítico →</button>' +
+            '<button class="button small secondary" data-action="prompt-edit-balance" data-id="' + account.id + '">Editar Saldo</button>' +
+            '<button class="button small danger outline" data-action="delete-account" data-id="' + account.id + '">Excluir</button>' +
+            '<button class="button small outline" data-analytics="account" data-id="' + account.id + '">Extrato →</button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -2013,8 +2020,9 @@
             '<span>Disponível: <strong class="positive">' + money(Math.max(0, card.limit - bill)) + '</strong></span>' +
           '</div>' +
           '<div class="analytics-account-actions">' +
-            '<button class="button small outline" data-analytics="card" data-id="' + card.id + '">Ver Compras da Fatura →</button>' +
+            '<button class="button small danger outline" data-action="delete-card" data-id="' + card.id + '">Excluir Cartão</button>' +
             '<button class="button small secondary" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>' +
+            '<button class="button small outline" data-analytics="card" data-id="' + card.id + '">Ver Fatura →</button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -2059,6 +2067,7 @@
 
       footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
         '<button class="button small outline" data-action="go-transactions-filtered" data-account="' + account.id + '">Filtrar em Transações →</button>' +
+        '<button class="button danger small outline" data-action="delete-account" data-id="' + account.id + '">Excluir Conta</button>' +
         '<button class="button primary small" data-action="quick-add">+ Lançamento</button>';
     }
     else if (viewType === 'card') {
@@ -2092,6 +2101,7 @@
 
       footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
         '<button class="button small outline" data-action="go-transactions-filtered" data-card="' + card.id + '">Filtrar em Transações →</button>' +
+        '<button class="button danger small outline" data-action="delete-card" data-id="' + card.id + '">Excluir Cartão</button>' +
         '<button class="button secondary small" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>';
     }
     else if (viewType === 'category') {
@@ -2881,6 +2891,64 @@
     if (action === 'toggle-mobile-more') { mobileMenuOpen = !mobileMenuOpen; render(); return; }
     if (action === 'copy-telegram-code') { copyTelegramPairingCode(); return; }
     if (action === 'sync-telegram') { syncTelegram(false); return; }
+
+    if (action === 'delete-account') {
+      var accountId = target.getAttribute('data-id');
+      var account = accountById(accountId);
+      if (!account) return;
+
+      var count = state.transactions.filter(function (t) {
+        return t.accountId === accountId || t.fromAccountId === accountId || t.toAccountId === accountId;
+      }).length;
+
+      var msg = 'Deseja realmente excluir a conta "' + account.name + '"?';
+      if (count > 0) {
+        msg += '\n\nAtenção: Existem ' + count + ' lançamento(s) associado(s) a esta conta, que também serão excluídos.';
+      }
+
+      if (window.confirm(msg)) {
+        if (count > 0) {
+          state.transactions = state.transactions.filter(function (t) {
+            return t.accountId !== accountId && t.fromAccountId !== accountId && t.toAccountId !== accountId;
+          });
+        }
+        state.accounts = state.accounts.filter(function (a) { return a.id !== accountId; });
+        save();
+        closeAll();
+        render();
+        showToast('Conta "' + account.name + '" excluída com sucesso.');
+      }
+      return;
+    }
+
+    if (action === 'delete-card') {
+      var cardId = target.getAttribute('data-id');
+      var card = cardById(cardId);
+      if (!card) return;
+
+      var count = state.transactions.filter(function (t) {
+        return t.cardId === cardId;
+      }).length;
+
+      var msg = 'Deseja realmente excluir o cartão "' + card.name + '"?';
+      if (count > 0) {
+        msg += '\n\nAtenção: Existem ' + count + ' compra(s) ou lançamento(s) associados a este cartão, que também serão excluídos.';
+      }
+
+      if (window.confirm(msg)) {
+        if (count > 0) {
+          state.transactions = state.transactions.filter(function (t) {
+            return t.cardId !== cardId;
+          });
+        }
+        state.cards = state.cards.filter(function (c) { return c.id !== cardId; });
+        save();
+        closeAll();
+        render();
+        showToast('Cartão "' + card.name + '" excluído com sucesso.');
+      }
+      return;
+    }
 
     if (action === 'delete-all-transactions') {
       var hasData = state.transactions.length > 0 || state.accounts.some(function (a) { return Number(a.openingBalance || 0) !== 0; }) || state.bills.length > 0;

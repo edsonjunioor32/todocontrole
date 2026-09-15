@@ -61,102 +61,108 @@
     return icons[name] || icons['dashboard'];
   }
 
-  /* ==========================================================================
-     CUSTOM BRANDED BADGES FOR INSTITUTIONS & CREDIT CARDS
+    /* ==========================================================================
+     DEBOUNCE OFFICIAL LOGO & BADGE SYSTEM (https://logo.debounce.com/{domain})
      ========================================================================== */
+  function institutionDomain(name, institution, type) {
+    var text = ((name || '') + ' ' + (institution || '') + ' ' + (type || '')).toLowerCase();
+    if (text.indexOf('nubank') >= 0 || text.indexOf('roxinho') >= 0 || text.indexOf('ultravioleta') >= 0) return 'nubank.com.br';
+    if (text.indexOf('xp') >= 0 || text.indexOf('xpi') >= 0) return 'xpi.com.br';
+    if (text.indexOf('itau') >= 0 || text.indexOf('itaú') >= 0) return 'itau.com.br';
+    if (text.indexOf('bradesco') >= 0) return 'bradesco.com.br';
+    if (text.indexOf('banco do brasil') >= 0 || text.indexOf('bb') >= 0) return 'bb.com.br';
+    if (text.indexOf('santander') >= 0) return 'santander.com.br';
+    if (text.indexOf('caixa') >= 0 || text.indexOf('cef') >= 0) return 'caixa.gov.br';
+    if (text.indexOf('inter') >= 0) return 'inter.co';
+    if (text.indexOf('c6') >= 0) return 'c6bank.com.br';
+    if (text.indexOf('btg') >= 0) return 'btgpactual.com';
+    if (text.indexOf('mercado pago') >= 0 || text.indexOf('mercadopago') >= 0) return 'mercadopago.com.br';
+    if (text.indexOf('picpay') >= 0) return 'picpay.com';
+    if (text.indexOf('pagbank') >= 0 || text.indexOf('pagseguro') >= 0) return 'pagbank.com.br';
+    if (text.indexOf('safra') >= 0) return 'safra.com.br';
+    if (text.indexOf('sicredi') >= 0) return 'sicredi.com.br';
+    if (text.indexOf('sicoob') >= 0) return 'sicoob.com.br';
+    if (text.indexOf('neon') >= 0) return 'neon.com.br';
+    if (text.indexOf('next') >= 0) return 'next.me';
+    if (text.indexOf('nomad') >= 0) return 'nomadglobal.com';
+    if (text.indexOf('wise') >= 0) return 'wise.com';
+    if (text.indexOf('revolut') >= 0) return 'revolut.com';
+    if (text.indexOf('rico') >= 0) return 'rico.com.vc';
+    if (text.indexOf('clear') >= 0) return 'clear.com.br';
+    if (text.indexOf('modal') >= 0) return 'modalmais.com.br';
+    if (text.indexOf('pan') >= 0) return 'bancopan.com.br';
+    if (text.indexOf('selic') >= 0 || text.indexOf('tesouro') >= 0) return 'tesourodireto.com.br';
+    if (text.indexOf('b3') >= 0) return 'b3.com.br';
+    if (text.indexOf('binance') >= 0) return 'binance.com';
+    if (text.indexOf('coinbase') >= 0) return 'coinbase.com';
+
+    var domainMatch = text.match(/([a-z0-9-]+\.(?:com\.br|com|co|io|org|net|gov\.br|ai|me|vc))/i);
+    if (domainMatch) return domainMatch[1];
+    return null;
+  }
+
+  function cardBrandDomain(brand, name) {
+    var text = ((brand || '') + ' ' + (name || '')).toLowerCase();
+    if (text.indexOf('visa') >= 0) return 'visa.com';
+    if (text.indexOf('mastercard') >= 0 || text.indexOf('master') >= 0) return 'mastercard.com';
+    if (text.indexOf('elo') >= 0) return 'elo.com.br';
+    if (text.indexOf('american express') >= 0 || text.indexOf('amex') >= 0) return 'americanexpress.com';
+    if (text.indexOf('hipercard') >= 0) return 'hipercard.com.br';
+    if (text.indexOf('diners') >= 0) return 'dinersclub.com';
+    return null;
+  }
+
   function renderAccountBadge(account) {
-    var name = (account.name || '').toLowerCase();
-    var inst = (account.institution || '').toLowerCase();
-    var type = (account.type || '').toLowerCase();
+    var domain = institutionDomain(account.name, account.institution, account.type);
+    var label = esc(account.institution || account.name || 'Conta');
 
-    // Nubank
-    if (name.indexOf('nubank') >= 0 || inst.indexOf('nubank') >= 0) {
-      return '<div class="account-badge badge-nubank" title="Nubank">' +
-        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-          '<path d="M7 19V9l7 10V9" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<path d="M21 9v10c0 1.1-.9 2-2 2h-1c-1.1 0-2-.9-2-2V9" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/>' +
-        '</svg>' +
+    if (domain) {
+      return '<div class="account-badge badge-logo" title="' + label + '">' +
+        '<img class="brand-logo-img" src="https://logo.debounce.com/' + encodeURIComponent(domain) + '" alt="' + label + '" loading="lazy" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';" />' +
+        '<div class="badge-fallback" style="display:none; width:100%; height:100%; align-items:center; justify-content:center; background:' + esc(account.color || 'var(--accent)') + ';">' +
+          '<svg width="22" height="22" viewBox="0 0 28 28" fill="none"><path d="M4 23h20M4 11h20M6 11v9M10 11v9M18 11v9M22 11v9M14 4 3 9h22L14 4z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</div>' +
       '</div>';
     }
 
-    // XP Investimentos
-    if (name.indexOf('xp') >= 0 || inst.indexOf('xp') >= 0) {
-      return '<div class="account-badge badge-xp" title="XP">' +
-        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-          '<path d="M6 6l16 16M22 6L6 22" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>' +
-          '<circle cx="14" cy="14" r="3" fill="#00E5FF"/>' +
-        '</svg>' +
-      '</div>';
-    }
-
-    // Reserva / Selic / Tesouro / Investimento
-    if (name.indexOf('reserva') >= 0 || inst.indexOf('selic') >= 0 || inst.indexOf('tesouro') >= 0 || type.indexOf('investimento') >= 0) {
-      return '<div class="account-badge badge-vault" title="Reserva / Investimento">' +
-        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-          '<rect x="3.5" y="4.5" width="21" height="19" rx="3.5" fill="rgba(255,255,255,0.18)" stroke="#A7F3D0" stroke-width="2"/>' +
-          '<circle cx="14" cy="14" r="5" stroke="#34D399" stroke-width="2"/>' +
-          '<circle cx="14" cy="14" r="2" fill="#34D399"/>' +
-          '<path d="M14 7v2M14 19v2M7 14h2M19 14h2" stroke="#A7F3D0" stroke-width="2" stroke-linecap="round"/>' +
-        '</svg>' +
-      '</div>';
-    }
-
-    // Inter
-    if (name.indexOf('inter') >= 0 || inst.indexOf('inter') >= 0) {
-      return '<div class="account-badge badge-inter" title="Banco Inter">' +
-        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-          '<path d="M6 7h4v14H6zM13 11h4v10h-4zM20 14h2v7h-2z" fill="#FFFFFF"/>' +
-        '</svg>' +
-      '</div>';
-    }
-
-    // Carteira / Dinheiro físico
-    if (name.indexOf('carteira') >= 0 || inst.indexOf('dinheiro') >= 0 || type.indexOf('carteira') >= 0) {
+    var text = ((account.name || '') + ' ' + (account.institution || '') + ' ' + (account.type || '')).toLowerCase();
+    if (text.indexOf('carteira') >= 0 || text.indexOf('dinheiro') >= 0) {
       return '<div class="account-badge badge-wallet" title="Carteira">' +
-        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-          '<path d="M23 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2" stroke="#FFFFFF" stroke-width="2"/>' +
-          '<rect x="14" y="10" width="10" height="8" rx="2" fill="#FDE68A" stroke="#FFFFFF" stroke-width="1.8"/>' +
-          '<circle cx="19" cy="14" r="1.5" fill="#92400E"/>' +
-        '</svg>' +
+        '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><path d="M23 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2" stroke="#FFFFFF" stroke-width="2"/><rect x="14" y="10" width="10" height="8" rx="2" fill="#FDE68A" stroke="#FFFFFF" stroke-width="1.8"/><circle cx="19" cy="14" r="1.5" fill="#92400E"/></svg>' +
       '</div>';
     }
 
-    // Default Bank Crest
-    return '<div class="account-badge badge-bank" style="background:' + esc(account.color || 'linear-gradient(135deg, #0284C7, #0369A1)') + '" title="' + esc(account.name) + '">' +
-      '<svg width="24" height="24" viewBox="0 0 28 28" fill="none">' +
-        '<path d="M4 23h20M4 11h20M6 11v9M10 11v9M18 11v9M22 11v9M14 4 3 9h22L14 4z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '</svg>' +
+    return '<div class="account-badge badge-bank" style="background:' + esc(account.color || 'linear-gradient(135deg, #0284C7, #0369A1)') + '" title="' + label + '">' +
+      '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><path d="M4 23h20M4 11h20M6 11v9M10 11v9M18 11v9M22 11v9M14 4 3 9h22L14 4z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
     '</div>';
   }
 
   function renderCardBadge(card) {
-    var name = (card.name || '').toLowerCase();
-    var brand = (card.brand || '').toLowerCase();
+    var bankDomain = institutionDomain(card.name, card.brand, '');
+    var brandDomain = cardBrandDomain(card.brand, card.name);
+    var label = esc(card.name || 'Cartão');
 
-    var badgeClass = 'badge-card-default';
-    var chipColor = '#FBBF24';
-    var waveColor = 'rgba(255,255,255,0.75)';
+    if (bankDomain || brandDomain) {
+      var mainDomain = bankDomain || brandDomain;
+      var cornerBadge = (bankDomain && brandDomain)
+        ? '<img class="card-brand-corner" src="https://logo.debounce.com/' + encodeURIComponent(brandDomain) + '" alt="' + esc(card.brand || 'Bandeira') + '" loading="lazy" title="' + esc(card.brand || 'Bandeira') + '" onerror="this.style.display=\'none\';" />'
+        : '';
 
-    if (name.indexOf('nubank') >= 0 || name.indexOf('ultravioleta') >= 0) {
-      badgeClass = 'badge-card-nubank';
-      chipColor = '#E9D5FF';
-    } else if (name.indexOf('xp') >= 0 || name.indexOf('infinite') >= 0) {
-      badgeClass = 'badge-card-xp';
-      chipColor = '#38BDF8';
-    } else if (name.indexOf('inter') >= 0 || name.indexOf('black') >= 0) {
-      badgeClass = 'badge-card-inter';
-      chipColor = '#FDE68A';
-    } else if (name.indexOf('c6') >= 0) {
-      badgeClass = 'badge-card-c6';
-      chipColor = '#E2E8F0';
+      return '<div class="card-badge badge-logo" title="' + label + '">' +
+        '<img class="brand-logo-img" src="https://logo.debounce.com/' + encodeURIComponent(mainDomain) + '" alt="' + label + '" loading="lazy" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';" />' +
+        cornerBadge +
+        '<div class="badge-fallback" style="display:none; width:100%; height:100%; align-items:center; justify-content:center; background:' + esc(card.color || 'var(--indigo)') + ';">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>' +
+        '</div>' +
+      '</div>';
     }
 
-    return '<div class="card-badge ' + badgeClass + '" title="' + esc(card.name) + '">' +
+    return '<div class="card-badge badge-card-default" style="background:' + esc(card.color || 'var(--indigo)') + '" title="' + label + '">' +
       '<svg width="26" height="26" viewBox="0 0 32 32" fill="none">' +
         '<rect x="2" y="5" width="28" height="22" rx="3.5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>' +
-        '<rect x="5.5" y="8.5" width="6.5" height="5.5" rx="1.5" fill="' + chipColor + '" stroke="rgba(0,0,0,0.2)" stroke-width="0.8"/>' +
+        '<rect x="5.5" y="8.5" width="6.5" height="5.5" rx="1.5" fill="#FBBF24" stroke="rgba(0,0,0,0.2)" stroke-width="0.8"/>' +
         '<path d="M8.75 8.5v5.5M5.5 11.25h6.5" stroke="rgba(0,0,0,0.35)" stroke-width="0.7"/>' +
-        '<path d="M23 8c1.6 1.6 1.6 4.4 0 6M25 6c2.7 2.7 2.7 7.3 0 10" stroke="' + waveColor + '" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M23 8c1.6 1.6 1.6 4.4 0 6M25 6c2.7 2.7 2.7 7.3 0 10" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="round"/>' +
         '<rect x="5.5" y="18" width="14" height="2" rx="1" fill="rgba(255,255,255,0.85)"/>' +
         '<rect x="5.5" y="22" width="9" height="1.6" rx="0.8" fill="rgba(255,255,255,0.5)"/>' +
         '<circle cx="22.5" cy="21.5" r="3.2" fill="rgba(255,255,255,0.45)"/>' +
@@ -1278,9 +1284,9 @@
 
   function renderOpenFinance() {
     var providers = [
-      { name: 'Pluggy', text: 'Conector homologado para sincronização com bancos brasileiros, cartões e investimentos.' },
-      { name: 'Belvo', text: 'Infraestrutura segura para consentimento e leitura de dados financeiros via API regulada.' },
-      { name: 'Celcoin', text: 'Conectividade e automação financeira com suporte às diretrizes do Banco Central.' }
+      { name: 'Pluggy', domain: 'pluggy.ai', text: 'Conector homologado para sincronização com bancos brasileiros, cartões e investimentos.' },
+      { name: 'Belvo', domain: 'belvo.com', text: 'Infraestrutura segura para consentimento e leitura de dados financeiros via API regulada.' },
+      { name: 'Celcoin', domain: 'celcoin.com.br', text: 'Conectividade e automação financeira com suporte às diretrizes do Banco Central.' }
     ];
 
     return renderTopbar('Open Finance', 'Conexões automatizadas e leitura de extratos regulados') +
@@ -1301,9 +1307,16 @@
           providers.map(function (provider) {
             var connection = state.connections.find(function (item) { return item.provider === provider.name; });
             return '<section class="card provider-card">' +
-              '<h3>' + provider.name + '</h3>' +
+              '<div class="provider-header">' +
+                '<div class="provider-badge">' +
+                  '<img src="https://logo.debounce.com/' + encodeURIComponent(provider.domain) + '" alt="' + esc(provider.name) + '" loading="lazy" onerror="this.style.display=\'none\';" />' +
+                '</div>' +
+                '<div>' +
+                  '<h3 style="margin:0 0 4px 0">' + esc(provider.name) + '</h3>' +
+                  '<span class="status">' + (connection ? 'Configuração salva' : 'Não conectado') + '</span>' +
+                '</div>' +
+              '</div>' +
               '<p>' + provider.text + '</p>' +
-              '<span class="status">' + (connection ? 'Configuração salva' : 'Não conectado') + '</span>' +
               '<div style="margin-top:16px">' +
                 '<button class="button small secondary" data-action="open-connection" data-provider="' + provider.name + '">Preparar Conexão</button>' +
               '</div>' +

@@ -671,7 +671,7 @@
   }
 
   function accountMarkup(account) {
-    return '<div class="account-row">' +
+    return '<div class="account-row clickable-analytical" data-analytics="account" data-id="' + account.id + '" title="Clique para ver o extrato analítico desta conta">' +
       '<div class="account-main">' +
         renderAccountBadge(account) +
         '<div>' +
@@ -681,7 +681,7 @@
       '</div>' +
       '<div class="row-value">' +
         '<strong>' + money(accountBalance(account.id)) + '</strong>' +
-        '<span>saldo disponível</span>' +
+        '<span style="display:flex; align-items:center; gap:3px; justify-content:flex-end">saldo disponível <span class="analytical-hint" style="font-size:10px">Extrato ↗</span></span>' +
       '</div>' +
     '</div>';
   }
@@ -689,7 +689,7 @@
   function cardMarkup(card) {
     var bill = cardBill(card.id, state.selectedMonth);
     var percentage = card.limit ? clamp(bill / card.limit * 100, 0, 100) : 0;
-    return '<div class="card-row" style="display:flex; flex-direction:column; align-items:stretch">' +
+    return '<div class="card-row clickable-analytical" data-analytics="card" data-id="' + card.id + '" title="Clique para ver a fatura analítica deste cartão" style="display:flex; flex-direction:column; align-items:stretch">' +
       '<div style="display:flex; align-items:center; justify-content:space-between; width:100%">' +
         '<div class="card-main">' +
           renderCardBadge(card) +
@@ -700,7 +700,7 @@
         '</div>' +
         '<div class="row-value">' +
           '<strong class="' + (bill > card.limit ? 'negative' : '') + '">' + money(bill) + '</strong>' +
-          '<span>fatura atual</span>' +
+          '<span style="display:flex; align-items:center; gap:3px; justify-content:flex-end">fatura atual <span class="analytical-hint" style="font-size:10px">Fatura ↗</span></span>' +
         '</div>' +
       '</div>' +
       '<div class="progress ' + (percentage > 85 ? 'red' : 'indigo') + '" style="margin-top:14px">' +
@@ -783,61 +783,76 @@
     return renderTopbar('Visão Geral', 'Resumo consolidado do seu mês financeiro') +
       '<div class="content">' +
         '<div class="grid summary-grid">' +
-          '<div class="card summary-card net-balance">' +
+          '<div class="card summary-card net-balance clickable-analytical" data-analytics="balance" title="Clique para ver a origem analítica do saldo consolidado">' +
             '<div class="summary-card-header">' +
               '<span class="label">Saldo Consolidado</span>' +
               '<span class="summary-card-badge">' + svgIcon('wallet-vault', 18) + '</span>' +
             '</div>' +
             '<div class="value ' + (data.balance < 0 ? 'negative' : 'positive') + '">' + money(data.balance) + '</div>' +
-            '<div class="helper">' + svgIcon('check', 13) + ' Total em contas e reservas</div>' +
+            '<div class="helper" style="display:flex; justify-content:space-between; align-items:center">' +
+              '<span>' + svgIcon('check', 13) + ' Total em contas</span>' +
+              '<span class="analytical-hint">Ver analítico ↗</span>' +
+            '</div>' +
           '</div>' +
-          '<div class="card summary-card income">' +
+          '<div class="card summary-card income clickable-analytical" data-analytics="income" title="Clique para ver a origem analítica das receitas">' +
             '<div class="summary-card-header">' +
               '<span class="label">Receitas do Mês</span>' +
               '<span class="summary-card-badge" style="color:var(--green)">' + svgIcon('income-surge', 18) + '</span>' +
             '</div>' +
             '<div class="value positive">' + money(data.income) + '</div>' +
-            '<div class="helper">' + svgIcon('income', 13) + ' Total de entradas</div>' +
+            '<div class="helper" style="display:flex; justify-content:space-between; align-items:center">' +
+              '<span>' + svgIcon('income', 13) + ' Total de entradas</span>' +
+              '<span class="analytical-hint">Ver analítico ↗</span>' +
+            '</div>' +
           '</div>' +
-          '<div class="card summary-card expense">' +
+          '<div class="card summary-card expense clickable-analytical" data-analytics="expense" title="Clique para ver a origem analítica das despesas">' +
             '<div class="summary-card-header">' +
               '<span class="label">Despesas do Mês</span>' +
               '<span class="summary-card-badge" style="color:var(--red)">' + svgIcon('expense-burn', 18) + '</span>' +
             '</div>' +
             '<div class="value negative">' + money(data.expense) + '</div>' +
-            '<div class="helper">' + svgIcon('expense', 13) + ' Total de saídas</div>' +
+            '<div class="helper" style="display:flex; justify-content:space-between; align-items:center">' +
+              '<span>' + svgIcon('expense', 13) + ' Total de saídas</span>' +
+              '<span class="analytical-hint">Ver analítico ↗</span>' +
+            '</div>' +
           '</div>' +
-          '<div class="card summary-card limit">' +
+          '<div class="card summary-card limit clickable-analytical" data-analytics="monthly" title="Clique para ver o balanço analítico do mês">' +
             '<div class="summary-card-header">' +
               '<span class="label">Balanço do Mês</span>' +
               '<span class="summary-card-badge" style="color:var(--teal)">' + svgIcon('balance-scale', 18) + '</span>' +
             '</div>' +
             '<div class="value ' + (data.monthly < 0 ? 'negative' : 'positive') + '">' + money(data.monthly) + '</div>' +
-            '<div class="helper">' + data.transactions.length + ' lançamentos registrados</div>' +
+            '<div class="helper" style="display:flex; justify-content:space-between; align-items:center">' +
+              '<span>' + data.transactions.length + ' lançamentos</span>' +
+              '<span class="analytical-hint">Ver analítico ↗</span>' +
+            '</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="grid alert-grid" style="margin-bottom:24px">' +
-          '<div class="alert-card">' +
+          '<div class="alert-card clickable-analytical" data-analytics="pending" title="Clique para ver os lançamentos pendentes">' +
             '<span class="alert-icon red">' + svgIcon('pending-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + money(data.pending) + '</strong>' +
               '<span>Lançamentos pendentes de confirmação</span>' +
             '</div>' +
+            '<span class="analytical-chevron">›</span>' +
           '</div>' +
-          '<div class="alert-card">' +
+          '<div class="alert-card clickable-analytical" data-analytics="bills" title="Clique para ver as contas a pagar">' +
             '<span class="alert-icon teal">' + svgIcon('bill-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + money(data.openBills) + '</strong>' +
               '<span>Contas a pagar neste mês</span>' +
             '</div>' +
+            '<span class="analytical-chevron">›</span>' +
           '</div>' +
-          '<div class="alert-card">' +
+          '<div class="alert-card clickable-analytical" data-analytics="cards" title="Clique para ver as faturas dos cartões">' +
             '<span class="alert-icon yellow">' + svgIcon('card-alert', 24) + '</span>' +
             '<div>' +
               '<strong>' + state.cards.filter(function (card) { return cardBill(card.id, state.selectedMonth) > 0; }).length + ' cartões ativos</strong>' +
               '<span>Faturas com lançamentos no período</span>' +
             '</div>' +
+            '<span class="analytical-chevron">›</span>' +
           '</div>' +
         '</div>' +
 
@@ -882,7 +897,7 @@
               '<div class="donut" style="background:conic-gradient(' + stops.join(',') + ')"></div>' +
               '<div class="legend">' +
                 (categories.length ? categories.slice(0, 6).map(function (row) {
-                  return '<div class="legend-row">' +
+                  return '<div class="legend-row clickable-analytical" data-analytics="category" data-id="' + row.category.id + '" title="Clique para ver os lançamentos desta categoria">' +
                     '<span class="legend-label">' +
                       '<i class="legend-dot" style="background:' + esc(row.category.color) + '"></i>' +
                       esc(row.category.name) +
@@ -908,7 +923,7 @@
                     var category = categoryById(budget.categoryId);
                     var used = categoryExpense(state.selectedMonth, budget.categoryId);
                     var pct = budget.amount ? clamp(used / budget.amount * 100, 0, 100) : 0;
-                    return '<div class="budget-row">' +
+                    return '<div class="budget-row clickable-analytical" data-analytics="budget" data-id="' + budget.id + '" title="Clique para ver os lançamentos deste orçamento">' +
                       '<div class="budget-row-top">' +
                         '<strong>' + esc(category ? category.name : 'Sem categoria') + '</strong>' +
                         '<span>' + money(used) + ' / ' + money(budget.amount) + '</span>' +
@@ -1114,7 +1129,10 @@
                 '<h2>Instituições e Carteiras</h2>' +
                 '<p>' + state.accounts.length + ' contas monitoradas</p>' +
               '</div>' +
-              '<button class="button primary small" data-action="open-account">' + svgIcon('plus', 14) + ' Nova Conta</button>' +
+              '<div class="section-actions">' +
+                '<button class="button small outline" data-action="zero-all-balances" title="Zerar saldos iniciais de todas as contas">Zerar Saldos</button>' +
+                '<button class="button primary small" data-action="open-account">' + svgIcon('plus', 14) + ' Nova Conta</button>' +
+              '</div>' +
             '</div>' +
             '<div class="account-list">' +
               state.accounts.map(accountMarkup).join('') +
@@ -1775,8 +1793,367 @@
     );
   }
 
+  
+  /* ==========================================================================
+     ANALYTICAL DRILL-DOWN MODAL SYSTEM
+     ========================================================================== */
+  function renderAnalyticsModal() {
+    if (!modal || modal.type !== 'analytics') return '';
+    var viewType = modal.viewType || 'balance';
+    var month = state.selectedMonth;
+    var data = summary(month);
+    var monthTx = monthTransactions(month);
+
+    var title = 'Origem Analítica';
+    var subtitle = 'Detalhamento financeiro em ' + esc(monthLabel(month));
+    var content = '';
+    var footer = '<button class="button outline" data-action="close-modal">Fechar</button>';
+
+    if (viewType === 'balance') {
+      title = 'Origem Analítica — Saldo Consolidado';
+      subtitle = 'Composição patrimonial e conciliação de saldos em ' + esc(monthLabel(month));
+      
+      var hasNoTx = state.transactions.length === 0;
+      var accountsList = state.accounts.map(function (account) {
+        var accBalance = accountBalance(account.id);
+        var accIncome = state.transactions.filter(function (t) { return t.type === 'income' && t.accountId === account.id; }).reduce(function (s, t) { return s + Number(t.amount || 0); }, 0);
+        var accExpense = state.transactions.filter(function (t) { return (t.type === 'expense' || t.type === 'card-payment') && t.accountId === account.id; }).reduce(function (s, t) { return s + Number(t.amount || 0); }, 0);
+        
+        return '<div class="analytics-account-card">' +
+          '<div class="analytics-account-header">' +
+            '<div style="display:flex; align-items:center; gap:12px">' +
+              renderAccountBadge(account) +
+              '<div>' +
+                '<strong style="font-size:15px">' + esc(account.name) + '</strong>' +
+                '<div style="font-size:12px; color:var(--text-muted)">' + esc(account.institution || account.type || 'Conta') + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="text-align:right">' +
+              '<div class="' + (accBalance < 0 ? 'negative' : 'positive') + '" style="font-size:17px; font-weight:700">' + money(accBalance) + '</div>' +
+              '<div style="font-size:11.5px; color:var(--text-muted)">saldo disponível</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="analytics-math-row">' +
+            '<span>Saldo Inicial: <strong>' + money(account.openingBalance || 0) + '</strong></span>' +
+            '<span>Entradas: <strong class="positive">+ ' + money(accIncome) + '</strong></span>' +
+            '<span>Saídas: <strong class="negative">- ' + money(accExpense) + '</strong></span>' +
+          '</div>' +
+          '<div class="analytics-account-actions">' +
+            '<button class="button small secondary" data-action="prompt-edit-balance" data-id="' + account.id + '">Editar Saldo Inicial</button>' +
+            '<button class="button small outline" data-analytics="account" data-id="' + account.id + '">Ver Extrato Analítico →</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Saldo Consolidado Total</div>' +
+          '<div class="analytics-kpi-val ' + (data.balance < 0 ? 'negative' : 'positive') + '">' + money(data.balance) + '</div>' +
+          '<div class="analytics-kpi-sub">' + state.accounts.length + ' contas e reservas monitoradas</div>' +
+        '</div>' +
+        (data.balance > 0 && hasNoTx ?
+          '<div class="callout warning" style="margin-bottom:18px">' +
+            '<strong>ℹ️ Origem dos Valores nos Saldos:</strong>' +
+            '<p style="margin:6px 0 10px 0; font-size:13px; line-height:1.45">' +
+              'Não há lançamentos de receitas ou despesas cadastrados. O saldo exibido provém exclusivamente dos <strong>Saldos Iniciais</strong> cadastrados nas contas bancárias acima. Para zerar totalmente os saldos das contas para R$ 0,00, clique no botão abaixo:' +
+            '</p>' +
+            '<button class="button danger small" data-action="zero-all-balances">Zerar Todos os Saldos para R$ 0,00</button>' +
+          '</div>' : '') +
+        '<div style="margin-bottom:12px; font-size:13px; font-weight:600; color:var(--text)">Composição por conta bancária:</div>' +
+        '<div class="analytics-accounts-list">' + accountsList + '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button secondary" data-action="zero-all-balances">Zerar Todos os Saldos</button>';
+    }
+    else if (viewType === 'income') {
+      title = 'Origem Analítica — Receitas do Mês';
+      subtitle = 'Todas as entradas e rendimentos de ' + esc(monthLabel(month));
+      var incomeTx = monthTx.filter(function (t) { return t.type === 'income'; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Total de Receitas no Período</div>' +
+          '<div class="analytics-kpi-val positive">+ ' + money(data.income) + '</div>' +
+          '<div class="analytics-kpi-sub">' + incomeTx.length + ' lançamentos registrados</div>' +
+        '</div>' +
+        '<div class="analytics-section-title" style="margin:14px 0 10px 0; font-size:13px; font-weight:600">Lançamentos discriminados:</div>' +
+        '<div class="transaction-list">' +
+          (incomeTx.length ? incomeTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhuma receita registrada neste mês.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        (incomeTx.length ? '<button class="button small outline" data-action="go-transactions-filtered" data-filter="income">Ver em Transações →</button>' : '') +
+        '<button class="button primary" data-action="open-transaction" data-type="income">+ Nova Receita</button>';
+    }
+    else if (viewType === 'expense') {
+      title = 'Origem Analítica — Despesas do Mês';
+      subtitle = 'Todas as saídas e compras de ' + esc(monthLabel(month));
+      var expenseTx = monthTx.filter(isPersonalExpense).sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Total de Despesas no Período</div>' +
+          '<div class="analytics-kpi-val negative">- ' + money(data.expense) + '</div>' +
+          '<div class="analytics-kpi-sub">' + expenseTx.length + ' saídas registradas</div>' +
+        '</div>' +
+        '<div class="analytics-section-title" style="margin:14px 0 10px 0; font-size:13px; font-weight:600">Lançamentos discriminados:</div>' +
+        '<div class="transaction-list">' +
+          (expenseTx.length ? expenseTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhuma despesa registrada neste mês.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        (expenseTx.length ? '<button class="button small outline" data-action="go-transactions-filtered" data-filter="expense">Ver em Transações →</button>' : '') +
+        '<button class="button primary" data-action="open-transaction" data-type="expense">+ Nova Despesa</button>';
+    }
+    else if (viewType === 'monthly') {
+      title = 'Origem Analítica — Balanço do Mês';
+      subtitle = 'Fluxo de caixa líquido em ' + esc(monthLabel(month));
+      var allMonthTx = monthTx.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Resultado Líquido do Mês</div>' +
+          '<div class="analytics-kpi-val ' + (data.monthly < 0 ? 'negative' : 'positive') + '">' + money(data.monthly) + '</div>' +
+          '<div class="analytics-math-row" style="justify-content:center; margin-top:8px">' +
+            '<span>Receitas: <strong class="positive">+ ' + money(data.income) + '</strong></span>' +
+            '<span>Despesas: <strong class="negative">- ' + money(data.expense) + '</strong></span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="analytics-section-title" style="margin:14px 0 10px 0; font-size:13px; font-weight:600">Extrato completo de movimentações:</div>' +
+        '<div class="transaction-list">' +
+          (allMonthTx.length ? allMonthTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento no período.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button small outline" data-action="go-transactions-filtered" data-filter="all">Ver em Transações →</button>';
+    }
+    else if (viewType === 'pending') {
+      title = 'Origem Analítica — Lançamentos Pendentes';
+      subtitle = 'Lançamentos aguardando confirmação em ' + esc(monthLabel(month));
+      var pendingTx = monthTx.filter(function (t) { return t.status === 'pending'; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Total Pendente de Confirmação</div>' +
+          '<div class="analytics-kpi-val" style="color:var(--amber)">' + money(data.pending) + '</div>' +
+          '<div class="analytics-kpi-sub">' + pendingTx.length + ' lançamentos pendentes</div>' +
+        '</div>' +
+        '<div class="transaction-list">' +
+          (pendingTx.length ? pendingTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento pendente no momento.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        (pendingTx.length ? '<button class="button small outline" data-action="go-transactions-filtered" data-filter="pending">Ver em Transações →</button>' : '');
+    }
+    else if (viewType === 'bills') {
+      title = 'Origem Analítica — Contas a Pagar';
+      subtitle = 'Compromissos fixos previstos para ' + esc(monthLabel(month));
+      var openBillsList = state.bills.filter(function (item) { return String(item.dueDate || '').slice(0, 7) === month; });
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Total de Contas a Pagar</div>' +
+          '<div class="analytics-kpi-val" style="color:var(--teal)">' + money(data.openBills) + '</div>' +
+          '<div class="analytics-kpi-sub">' + openBillsList.length + ' contas cadastradas para este mês</div>' +
+        '</div>' +
+        '<div class="bills-list">' +
+          (openBillsList.length ? openBillsList.map(function (bill) {
+            var cat = categoryById(bill.categoryId);
+            return '<div class="account-row" style="margin-bottom:8px">' +
+              '<div>' +
+                '<strong>' + esc(bill.description) + '</strong>' +
+                '<div style="font-size:12px; color:var(--text-muted)">Vence em ' + dateBR(bill.dueDate) + ' · ' + esc(cat ? cat.name : 'Geral') + '</div>' +
+              '</div>' +
+              '<div class="row-value">' +
+                '<strong class="negative">' + money(bill.amount) + '</strong>' +
+                '<span class="status ' + (bill.status === 'paid' ? 'positive' : 'warning') + '">' + (bill.status === 'paid' ? 'Pago' : 'Em aberto') + '</span>' +
+              '</div>' +
+            '</div>';
+          }).join('') : '<div class="empty">Nenhuma conta cadastrada para este mês.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button primary small" data-view="planning">Ir para Planejamento →</button>';
+    }
+    else if (viewType === 'cards') {
+      title = 'Origem Analítica — Faturas dos Cartões';
+      subtitle = 'Lançamentos e faturas ativas em ' + esc(monthLabel(month));
+      
+      var cardsBreakdown = state.cards.map(function (card) {
+        var bill = cardBill(card.id, month);
+        var purchases = state.transactions.filter(function (t) {
+          if (t.cardId !== card.id || t.type !== 'expense') return false;
+          var itemMonth = t.billingMonth || String(t.date || '').slice(0, 7);
+          return itemMonth === month;
+        });
+
+        return '<div class="analytics-account-card">' +
+          '<div class="analytics-account-header">' +
+            '<div style="display:flex; align-items:center; gap:12px">' +
+              renderCardBadge(card) +
+              '<div>' +
+                '<strong style="font-size:15px">' + esc(card.name) + '</strong>' +
+                '<div style="font-size:12px; color:var(--text-muted)">' + esc(card.brand || 'Cartão') + ' · Fecha dia ' + esc(card.closingDay || '-') + ' · Vence dia ' + esc(card.dueDay || '-') + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="text-align:right">' +
+              '<div class="negative" style="font-size:17px; font-weight:700">' + money(bill) + '</div>' +
+              '<div style="font-size:11.5px; color:var(--text-muted)">fatura do mês</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="analytics-math-row">' +
+            '<span>Limite: <strong>' + money(card.limit) + '</strong></span>' +
+            '<span>Compras no período: <strong>' + purchases.length + '</strong></span>' +
+            '<span>Disponível: <strong class="positive">' + money(Math.max(0, card.limit - bill)) + '</strong></span>' +
+          '</div>' +
+          '<div class="analytics-account-actions">' +
+            '<button class="button small outline" data-analytics="card" data-id="' + card.id + '">Ver Compras da Fatura →</button>' +
+            '<button class="button small secondary" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-accounts-list">' + cardsBreakdown + '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button primary small" data-view="invoices">Ver Tela de Faturas →</button>';
+    }
+    else if (viewType === 'account') {
+      var account = accountById(modal.id);
+      if (!account) return '';
+      title = 'Extrato Analítico — ' + account.name;
+      subtitle = (account.institution || 'Conta') + ' · ' + (account.type || 'Conta corrente');
+
+      var accTx = state.transactions.filter(function (t) { return t.accountId === account.id || t.fromAccountId === account.id || t.toAccountId === account.id; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      var accBalance = accountBalance(account.id);
+      var accIncome = accTx.filter(function (t) { return t.type === 'income' || (t.type === 'transfer' && t.toAccountId === account.id); }).reduce(function (s, t) { return s + Number(t.amount || 0); }, 0);
+      var accExpense = accTx.filter(function (t) { return t.type === 'expense' || t.type === 'card-payment' || (t.type === 'transfer' && t.fromAccountId === account.id); }).reduce(function (s, t) { return s + Number(t.amount || 0); }, 0);
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div style="display:flex; justify-content:center; margin-bottom:10px">' + renderAccountBadge(account) + '</div>' +
+          '<div class="analytics-kpi-label">Saldo Disponível Atual</div>' +
+          '<div class="analytics-kpi-val ' + (accBalance < 0 ? 'negative' : 'positive') + '">' + money(accBalance) + '</div>' +
+          '<div class="analytics-math-row" style="justify-content:center; margin-top:8px">' +
+            '<span>Saldo Inicial: <strong>' + money(account.openingBalance || 0) + '</strong></span>' +
+            '<span>Entradas: <strong class="positive">+ ' + money(accIncome) + '</strong></span>' +
+            '<span>Saídas: <strong class="negative">- ' + money(accExpense) + '</strong></span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">' +
+          '<div style="font-size:13px; font-weight:600">Movimentações da conta:</div>' +
+          '<button class="button small secondary" data-action="prompt-edit-balance" data-id="' + account.id + '">Editar Saldo Inicial</button>' +
+        '</div>' +
+        '<div class="transaction-list">' +
+          (accTx.length ? accTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum lançamento registrado nesta conta. O saldo atual corresponde ao saldo inicial.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button small outline" data-action="go-transactions-filtered" data-account="' + account.id + '">Filtrar em Transações →</button>' +
+        '<button class="button primary small" data-action="quick-add">+ Lançamento</button>';
+    }
+    else if (viewType === 'card') {
+      var card = cardById(modal.id);
+      if (!card) return '';
+      title = 'Fatura Analítica — ' + card.name;
+      subtitle = (card.brand || 'Cartão') + ' · Fecha dia ' + esc(card.closingDay || '-') + ' · Vence dia ' + esc(card.dueDay || '-');
+
+      var cardTx = state.transactions.filter(function (t) {
+        if (t.cardId !== card.id) return false;
+        var itemMonth = t.type === 'expense' ? (t.billingMonth || String(t.date || '').slice(0, 7)) : String(t.date || '').slice(0, 7);
+        return itemMonth === month;
+      }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      var cardBillAmount = cardBill(card.id, month);
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div style="display:flex; justify-content:center; margin-bottom:10px">' + renderCardBadge(card) + '</div>' +
+          '<div class="analytics-kpi-label">Fatura de ' + esc(monthLabel(month)) + '</div>' +
+          '<div class="analytics-kpi-val negative">' + money(cardBillAmount) + '</div>' +
+          '<div class="analytics-math-row" style="justify-content:center; margin-top:8px">' +
+            '<span>Limite Total: <strong>' + money(card.limit) + '</strong></span>' +
+            '<span>Limite Disponível: <strong class="positive">' + money(Math.max(0, card.limit - cardBillAmount)) + '</strong></span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:10px; font-size:13px; font-weight:600">Compras nesta fatura (' + cardTx.length + '):</div>' +
+        '<div class="transaction-list">' +
+          (cardTx.length ? cardTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhuma compra nesta fatura.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button small outline" data-action="go-transactions-filtered" data-card="' + card.id + '">Filtrar em Transações →</button>' +
+        '<button class="button secondary small" data-action="pay-card" data-id="' + card.id + '">Pagar Fatura</button>';
+    }
+    else if (viewType === 'category') {
+      var cat = categoryById(modal.id);
+      if (!cat) return '';
+      title = 'Origem Analítica — ' + cat.name;
+      subtitle = 'Gastos nesta categoria em ' + esc(monthLabel(month));
+
+      var catTx = monthTx.filter(function (t) {
+        return t.categoryId === cat.id || (categoryById(t.categoryId) && categoryById(t.categoryId).parentId === cat.id);
+      }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      var totalSpent = categoryExpense(month, cat.id);
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Total Gasto na Categoria</div>' +
+          '<div class="analytics-kpi-val negative">' + money(totalSpent) + '</div>' +
+          '<div class="analytics-kpi-sub">' + catTx.length + ' lançamentos em ' + esc(monthLabel(month)) + '</div>' +
+        '</div>' +
+        '<div class="transaction-list">' +
+          (catTx.length ? catTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhuma despesa para esta categoria neste mês.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        '<button class="button small outline" data-action="go-transactions-filtered" data-category="' + cat.id + '">Filtrar em Transações →</button>';
+    }
+    else if (viewType === 'budget') {
+      var budget = state.budgets.find(function (b) { return b.id === modal.id; });
+      var cat = budget ? categoryById(budget.categoryId) : null;
+      title = 'Acompanhamento Analítico — ' + (cat ? cat.name : 'Orçamento');
+      subtitle = 'Consumo do teto em ' + esc(monthLabel(month));
+
+      var spent = budget ? categoryExpense(month, budget.categoryId) : 0;
+      var budgetTx = budget ? monthTx.filter(function (t) { return t.categoryId === budget.categoryId; }).sort(function (a, b) { return b.date.localeCompare(a.date); }) : [];
+      var pct = budget && budget.amount ? Math.round(spent / budget.amount * 100) : 0;
+
+      content = '<div class="analytics-modal-body">' +
+        '<div class="analytics-kpi-card">' +
+          '<div class="analytics-kpi-label">Consumo do Orçamento</div>' +
+          '<div class="analytics-kpi-val ' + (spent > (budget ? budget.amount : 0) ? 'negative' : 'positive') + '">' + money(spent) + ' / ' + money(budget ? budget.amount : 0) + '</div>' +
+          '<div class="progress ' + (pct > 100 ? 'red' : 'indigo') + '" style="margin:12px auto; max-width:400px">' +
+            '<span style="width:' + clamp(pct, 0, 100) + '%"></span>' +
+          '</div>' +
+          '<div class="analytics-kpi-sub">' + pct + '% utilizado · ' + money(Math.max(0, (budget ? budget.amount : 0) - spent)) + ' restante</div>' +
+        '</div>' +
+        '<div style="margin-bottom:10px; font-size:13px; font-weight:600">Lançamentos que consumiram o orçamento:</div>' +
+        '<div class="transaction-list">' +
+          (budgetTx.length ? budgetTx.map(function (item) { return transactionMarkup(item, true); }).join('') : '<div class="empty">Nenhum gasto registrado nesta categoria ainda.</div>') +
+        '</div>' +
+      '</div>';
+
+      footer = '<button class="button outline" data-action="close-modal">Fechar</button>' +
+        (cat ? '<button class="button small outline" data-action="go-transactions-filtered" data-category="' + cat.id + '">Filtrar em Transações →</button>' : '');
+    }
+
+    return modalShell(title, subtitle, content, footer);
+  }
+
   function renderModal() {
     if (!modal) return '';
+    if (modal.type === 'analytics') return renderAnalyticsModal();
     if (modal.type === 'transaction') return renderTransactionModal();
     if (modal.type === 'account') return renderAccountModal();
     if (modal.type === 'card') return renderCardModal();
@@ -2483,23 +2860,82 @@
   }
 
   function handleClick(event) {
-    var target = event.target.closest('button, a, .modal-backdrop');
+    var target = event.target.closest('button, a, .modal-backdrop, [data-analytics], [data-action], [data-view]');
     if (!target) return;
+
+    var analyticsType = target.getAttribute('data-analytics');
+    if (analyticsType) {
+      modal = {
+        type: 'analytics',
+        viewType: analyticsType,
+        id: target.getAttribute('data-id')
+      };
+      render();
+      return;
+    }
+
     var example = target.getAttribute('data-telegram-example');
     if (example) { var input = document.getElementById('telegram-message'); if (input) { input.value = example; input.focus(); } return; }
     var action = target.getAttribute('data-action');
     if (action === 'toggle-mobile-more') { mobileMenuOpen = !mobileMenuOpen; render(); return; }
     if (action === 'copy-telegram-code') { copyTelegramPairingCode(); return; }
     if (action === 'sync-telegram') { syncTelegram(false); return; }
+
     if (action === 'delete-all-transactions') {
-      var transactionCount = state.transactions.length;
-      if (!transactionCount) { showToast('Não há lançamentos para excluir.'); return; }
-      if (window.confirm('Excluir todos os ' + transactionCount + ' lançamentos? Esta ação não pode ser desfeita.')) {
+      var hasData = state.transactions.length > 0 || state.accounts.some(function (a) { return Number(a.openingBalance || 0) !== 0; }) || state.bills.length > 0;
+      if (!hasData) {
+        showToast('Todos os lançamentos e saldos já estão zerados.');
+        return;
+      }
+      if (window.confirm('Excluir todos os lançamentos e zerar os saldos de todas as contas para R$ 0,00? Esta ação deixará todos os saldos em R$ 0,00 e não pode ser desfeita.')) {
         state.transactions = [];
+        state.accounts.forEach(function (account) {
+          account.openingBalance = 0;
+        });
+        state.bills = [];
         save();
         render();
-        showToast('Todos os lançamentos foram excluídos.');
+        showToast('Lançamentos excluídos e saldos zerados com sucesso (R$ 0,00).');
       }
+      return;
+    }
+
+    if (action === 'zero-all-balances') {
+      if (window.confirm('Zerar o saldo de todas as contas para R$ 0,00 e limpar contas a pagar?')) {
+        state.accounts.forEach(function (account) {
+          account.openingBalance = 0;
+        });
+        state.bills = [];
+        save();
+        render();
+        showToast('Todos os saldos foram zerados com sucesso (R$ 0,00).');
+      }
+      return;
+    }
+
+    if (action === 'prompt-edit-balance') {
+      var accountId = target.getAttribute('data-id');
+      var account = accountById(accountId);
+      if (!account) return;
+      var currentVal = Number(account.openingBalance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      var newVal = window.prompt('Informe o novo Saldo Inicial para a conta "' + account.name + '" (R$):', currentVal);
+      if (newVal !== null) {
+        account.openingBalance = parseMoney(newVal);
+        save();
+        render();
+        showToast('Saldo inicial de ' + account.name + ' atualizado para ' + money(account.openingBalance));
+      }
+      return;
+    }
+
+    if (action === 'go-transactions-filtered') {
+      activeView = 'transactions';
+      searchTerm = '';
+      activeFilter = target.getAttribute('data-filter') || 'all';
+      activeAccountFilter = target.getAttribute('data-account') || 'all';
+      activeCardFilter = target.getAttribute('data-card') || 'all';
+      activeCategoryFilter = target.getAttribute('data-category') || 'all';
+      closeAll();
       return;
     }
     if (action === 'open-category') { modal = { type: 'category' }; render(); return; }
@@ -2626,7 +3062,7 @@
       '<div class="content">' +
         '<div class="grid two-column">' +
           '<section class="card section"><div class="section-heading"><div><h2>Backup e Portabilidade</h2><p>Seus dados permanecem sob o seu total controle</p></div></div>' +
-            '<div class="grid" style="gap:12px"><button class="button secondary full" data-action="export-json">Exportar Backup Completo (JSON)</button><button class="button outline full" data-action="open-import">Importar Fatura ou Extrato</button><button class="button danger full" data-action="delete-all-transactions">Excluir todos os lançamentos</button><button class="button danger full" data-action="reset-data">Restaurar Dados Padrão</button></div>' +
+            '<div class="grid" style="gap:12px"><button class="button secondary full" data-action="export-json">Exportar Backup Completo (JSON)</button><button class="button outline full" data-action="open-import">Importar Fatura ou Extrato</button><button class="button danger full" data-action="delete-all-transactions">Excluir todos os lançamentos e zerar saldos</button><button class="button secondary full" data-action="zero-all-balances">Zerar saldos das contas (R$ 0,00)</button><button class="button danger full" data-action="reset-data">Restaurar Dados Padrão</button></div>' +
             '<div class="callout" style="margin-top:18px">O app salva dados neste dispositivo usando armazenamento local. Exporte um backup antes de trocar de navegador ou computador.</div>' +
           '</section>' +
           '<section class="card section"><div class="section-heading"><div><h2>Integrações</h2><p>Recursos conectados ao seu fluxo</p></div></div>' +

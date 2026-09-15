@@ -2258,3 +2258,125 @@ input[type="checkbox"] {
   object-fit: contain;
   border-radius: 6px;
 }
+
+/* ==========================================================================
+   INTERACTIVE ANALYTICAL DRILL-DOWN SYSTEM
+   ========================================================================== */
+
+.clickable-analytical {
+  cursor: pointer !important;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
+  position: relative !important;
+}
+
+.clickable-analytical:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
+}
+
+.analytical-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0.85;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.clickable-analytical:hover .analytical-hint {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.analytical-chevron {
+  margin-left: auto;
+  font-size: 20px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-weight: 300;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.clickable-analytical:hover .analytical-chevron {
+  color: var(--text);
+  transform: translateX(3px);
+  opacity: 1;
+}
+
+.analytics-kpi-card {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.analytics-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.analytics-kpi-val {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 6px;
+}
+
+.analytics-kpi-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.analytics-account-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+
+.analytics-account-card:hover {
+  border-color: var(--line-strong);
+}
+
+.analytics-account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.analytics-math-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.analytics-math-row span strong {
+  color: var(--text);
+}
+
+.analytics-account-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}

@@ -2846,6 +2846,7 @@
 
   function renderModal() {
     if (!modal) return '';
+    if (modal.type === 'analytics') return renderAnalyticsModal();
     if (modal.type === 'transaction') return renderTransactionModal();
     if (modal.type === 'category') return renderCategoryModal();
     if (modal.type === 'account') return renderAccountModal();
